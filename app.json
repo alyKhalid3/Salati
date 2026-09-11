@@ -5,6 +5,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0a"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -14,13 +20,16 @@
       "buildNumber": "1.0.0"
     },
     "android": {
+      "icon": "./assets/icon.png",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a0a0a"
       },
       "package": "com.salati.app",
       "versionCode": 1,
       "permissions": [
-        "NOTIFICATIONS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.SCHEDULE_EXACT_ALARM",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "RECEIVE_BOOT_COMPLETED",
@@ -28,15 +37,25 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
-      "expo-notifications",
-      "expo-location"
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0a0a0a",
+          "sounds": [],
+          "useNextNotificationsApi": true
+        }
+      ],
+      "expo-location",
+      "expo-splash-screen"
     ],
     "extra": {
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "ec2c4040-7218-4170-979b-4cff9cff8d88"
       }
     }
   }

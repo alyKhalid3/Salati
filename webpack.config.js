@@ -12,21 +12,7 @@ module.exports = async function (env, argv) {
     'react-native-safe-area-context': 'react-native-safe-area-context/lib/commonjs',
   };
 
-  // Fix missing modules
-  config.resolve.fallback = {
-    ...config.resolve.fallback,
-    crypto: require.resolve('crypto-browserify'),
-    stream: require.resolve('stream-browserify'),
-    buffer: require.resolve('buffer'),
-    vm: require.resolve('vm-browserify'),
-  };
-
-  // Fix Buffer issue
-  config.plugins.push(
-    new webpack.ProvidePlugin({
-      Buffer: ['buffer', 'Buffer'],
-    })
-  );
+  // No polyfills needed for web - removed buffer/crypto/stream/vm for performance
 
   return config;
 };

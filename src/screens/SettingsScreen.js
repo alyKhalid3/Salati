@@ -8,11 +8,15 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotification } from '../context/NotificationContext';
+import { usePrayer } from '../context/PrayerContext';
 import { PRAYER_NAMES } from '../utils/prayerTimes';
 import { storageBackend } from '../utils/storage';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
 export default function SettingsScreen({ navigation }) {
   const {
@@ -23,18 +27,39 @@ export default function SettingsScreen({ navigation }) {
     recurringReminders,
     setRecurringReminders,
   } = useNotification();
+  const { madhab, setMadhab, location } = usePrayer();
 
   const reminderOptions = [5, 10, 15, 30];
+  const methodLabels = {
+    Egyptian: 'الهيئة المصرية العامة للمساحة',
+    MuslimWorldLeague: 'رابطة العالم الإسلامي',
+    UmmAlQura: 'جامعة أم القرى',
+    NorthAmerica: 'أمريكا الشمالية (ISNA)',
+    Turkey: 'تركيا (Diyanet)',
+    Tehran: 'طهران',
+    Karachi: 'كراتشي',
+    Singapore: 'سنغافورة',
+    Qatar: 'قطر',
+    Kuwait: 'الكويت',
+  };
+  const activeMethod = methodLabels[location?.method] || methodLabels.MuslimWorldLeague;
+  const activeMadhab = madhab === 'Hanafi' ? 'الحنفي' : 'الشافعي';
+  const coordinateLabel = location && isFinite(Number(location.latitude)) && isFinite(Number(location.longitude))
+    ? `${Number(location.latitude).toFixed(4)}، ${Number(location.longitude).toFixed(4)}`
+    : '--';
 
-  const handleToggleNotifications = async (val) => {
+  const handleToggleNotifications = (val) => {
+    // Persists via NotificationContext; HomeScreen cancels/re-schedules on change
+    setNotificationsEnabled(val);
+  };
+
+  // On Android 12+ "alarms & reminders" exact timing is a separate permission;
+  // without it the system can defer prayer notifications by minutes (Doze).
+  const openExactAlarmSettings = async () => {
     try {
-      setNotificationsEnabled(val);
-      // persist setting
-      const current = await storageBackend.getSettings();
-      const next = { ...current, notificationsEnabled: val };
-      await storageBackend.saveSettings(next);
-    } catch (e) {
-      console.error('Failed to toggle notifications', e);
+      await Linking.sendIntent('android.settings.REQUEST_SCHEDULE_EXACT_ALARM');
+    } catch {
+      try { await Linking.openSettings(); } catch {}
     }
   };
 
@@ -44,6 +69,39 @@ export default function SettingsScreen({ navigation }) {
       Alert.alert('Success', 'Data exported successfully!');
     } catch (error) {
       Alert.alert('Error', 'Failed to export data');
+    }
+  };
+
+  const handleTestNotification = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        if ('Notification' in window) {
+          if (Notification.permission !== 'granted') await Notification.requestPermission();
+          new window.Notification('صلاتي - اختبار', { body: '🕌 الإشعارات تعمل! ستظهر صلاة الفجر بعد 5 ثوان' });
+        }
+        // Also schedule via our util for 5 sec
+        const { schedulePrayerNotifications } = await import('../utils/notifications');
+        const future = new Date(Date.now() + 5000);
+        await schedulePrayerNotifications('اختبار', future, 0);
+        Alert.alert('تم', 'سيظهر إشعار اختبار خلال 5 ثوان');
+        return;
+      }
+      // Native: ensure channel and permission, then schedule 5s
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') {
+        const { status: newStatus } = await Notifications.requestPermissionsAsync();
+        if (newStatus !== 'granted') {
+          Alert.alert('خطأ', 'الرجاء السماح بالإشعارات من الإعدادات');
+          return;
+        }
+      }
+      await Notifications.scheduleNotificationAsync({
+        content: { title: 'صلاتي - اختبار', body: '🕌 الإشعارات تعمل! (5 ثوان)', sound: 'default', priority: Notifications.AndroidNotificationPriority.HIGH, data: { test: true } },
+        trigger: { type: 'date', date: new Date(Date.now() + 5000), channelId: 'prayer-times' },
+      });
+      Alert.alert('تم', 'سيظهر إشعار اختبار خلال 5 ثوان — اترك التطبيق في الخلفية');
+    } catch (e) {
+      Alert.alert('خطأ', String(e.message || e));
     }
   };
 
@@ -123,8 +181,36 @@ export default function SettingsScreen({ navigation }) {
 
           <View style={styles.settingRow}>
             <View>
+              <Text style={styles.settingLabel}>حساب العصر</Text>
+              <Text style={styles.settingDesc}>شافعي أو حنفي</Text>
+            </View>
+            <View style={styles.optionsRow}>
+              {[{ value: 'Shafi', label: 'شافعي' }, { value: 'Hanafi', label: 'حنفي' }].map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.option,
+                    madhab === option.value && styles.optionActive,
+                  ]}
+                  onPress={() => setMadhab(option.value)}
+                >
+                  <Text
+                    style={[
+                      styles.optionText,
+                      madhab === option.value && styles.optionTextActive,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.settingRow}>
+            <View>
               <Text style={styles.settingLabel}>تذكير مستمر</Text>
-              <Text style={styles.settingDesc}>إرسال تذكيرات متكررة إذا لم تصلِّ</Text>
+              <Text style={styles.settingDesc}>تنبيه كل 10 دقائق لمدة ساعة إذا لم تصلِّ</Text>
             </View>
             <Switch
               value={recurringReminders}
@@ -133,6 +219,21 @@ export default function SettingsScreen({ navigation }) {
               thumbColor={recurringReminders ? '#f0ece4' : '#8a857a'}
             />
           </View>
+
+          {Platform.OS === 'android' && Platform.Version >= 31 && (
+            <View style={styles.settingRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.settingLabel}>التنبيهات في وقتها</Text>
+                <Text style={styles.settingDesc}>اسمح بـ"المنبهات ومواعيد التذكيرات" للنظام حتى تصل التنبيهات في وقتها بالضبط</Text>
+              </View>
+              <TouchableOpacity style={styles.option} onPress={openExactAlarmSettings}>
+                <Text style={styles.optionText}>فتح</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#d4956a', marginTop: 16 }]} onPress={handleTestNotification}>
+            <Text style={[styles.actionButtonText, { color: '#0a0a0a' }]}>🔔 اختبار الإشعارات (5 ثوان)</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Streak Info Section */}
@@ -158,12 +259,20 @@ export default function SettingsScreen({ navigation }) {
             <Text style={styles.infoValue}>1.0.0</Text>
           </View>
           <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>محرك الحساب</Text>
+            <Text style={styles.infoValue}>Adhan العالمي</Text>
+          </View>
+          <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>طريقة الحساب</Text>
-            <Text style={styles.infoValue}>الهيئة المصرية العامة للمساحة</Text>
+            <Text style={styles.infoValue}>{activeMethod}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>المذهب</Text>
-            <Text style={styles.infoValue}>الشافعي</Text>
+            <Text style={styles.infoValue}>{activeMadhab}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>الإحداثيات</Text>
+            <Text style={styles.infoValue}>{coordinateLabel}</Text>
           </View>
         </View>
 

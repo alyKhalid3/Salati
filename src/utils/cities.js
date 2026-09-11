@@ -1,0 +1,40 @@
+// src/utils/cities.js - mirrors web app.js CITIES exactly
+export const CITIES = [
+  // Egypt - Egyptian General Authority (19.5, 17.5) - Africa/Cairo
+  { name: 'القاهرة', country: 'مصر', lat: 30.0444, lng: 31.2357, method: 'Egyptian', timezone: 'Africa/Cairo' },
+  { name: 'الإسكندرية', country: 'مصر', lat: 31.2001, lng: 29.9187, method: 'Egyptian', timezone: 'Africa/Cairo' },
+  { name: 'الجيزة', country: 'مصر', lat: 30.0131, lng: 31.2089, method: 'Egyptian', timezone: 'Africa/Cairo' },
+  { name: 'المنصورة', country: 'مصر', lat: 31.0364, lng: 31.3807, method: 'Egyptian', timezone: 'Africa/Cairo' },
+  { name: 'أسوان', country: 'مصر', lat: 24.0889, lng: 32.8998, method: 'Egyptian', timezone: 'Africa/Cairo' },
+  { name: 'الأقصر', country: 'مصر', lat: 25.6872, lng: 32.6396, method: 'Egyptian', timezone: 'Africa/Cairo' },
+  { name: 'أسيوط', country: 'مصر', lat: 27.1809, lng: 31.1837, method: 'Egyptian', timezone: 'Africa/Cairo' },
+  { name: 'طنطا', country: 'مصر', lat: 30.7865, lng: 31.0004, method: 'Egyptian', timezone: 'Africa/Cairo' },
+  { name: 'الإسماعيلية', country: 'مصر', lat: 30.5833, lng: 32.2656, method: 'Egyptian', timezone: 'Africa/Cairo' },
+  { name: 'بورسعيد', country: 'مصر', lat: 31.2653, lng: 32.3019, method: 'Egyptian', timezone: 'Africa/Cairo' },
+  { name: 'السويس', country: 'مصر', lat: 29.9668, lng: 32.5498, method: 'Egyptian', timezone: 'Africa/Cairo' },
+  { name: 'شرم الشيخ', country: 'مصر', lat: 27.9158, lng: 34.3299, method: 'Egyptian', timezone: 'Africa/Cairo' },
+  // Saudi Arabia - UmmAlQura (18.5, 90min Isha) - Asia/Riyadh
+  { name: 'مكة المكرمة', country: 'السعودية', lat: 21.3891, lng: 39.8579, method: 'UmmAlQura', timezone: 'Asia/Riyadh' },
+  { name: 'المدينة المنورة', country: 'السعودية', lat: 24.4672, lng: 39.6111, method: 'UmmAlQura', timezone: 'Asia/Riyadh' },
+  { name: 'الرياض', country: 'السعودية', lat: 24.7136, lng: 46.6753, method: 'UmmAlQura', timezone: 'Asia/Riyadh' },
+  { name: 'جدة', country: 'السعودية', lat: 21.5433, lng: 39.1728, method: 'UmmAlQura', timezone: 'Asia/Riyadh' },
+  { name: 'الدمام', country: 'السعودية', lat: 26.4207, lng: 50.0888, method: 'UmmAlQura', timezone: 'Asia/Riyadh' },
+  // UAE & Gulf - MuslimWorldLeague (18, 17)
+  { name: 'دبي', country: 'الإمارات', lat: 25.2048, lng: 55.2708, method: 'MuslimWorldLeague', timezone: 'Asia/Dubai' },
+  { name: 'أبوظبي', country: 'الإمارات', lat: 24.4539, lng: 54.3773, method: 'MuslimWorldLeague', timezone: 'Asia/Dubai' },
+  { name: 'الدوحة', country: 'قطر', lat: 25.2854, lng: 51.5310, method: 'MuslimWorldLeague', timezone: 'Asia/Qatar' },
+  { name: 'الكويت', country: 'الكويت', lat: 29.3759, lng: 47.9774, method: 'MuslimWorldLeague', timezone: 'Asia/Kuwait' },
+  { name: 'المنامة', country: 'البحرين', lat: 26.2285, lng: 50.5860, method: 'MuslimWorldLeague', timezone: 'Asia/Bahrain' },
+  { name: 'مسقط', country: 'عُمان', lat: 23.6142, lng: 58.5453, method: 'MuslimWorldLeague', timezone: 'Asia/Muscat' },
+  // Levant & Others
+  { name: 'إسطنبول', country: 'تركيا', lat: 41.0082, lng: 28.9784, method: 'MuslimWorldLeague', timezone: 'Europe/Istanbul' },
+  { name: 'أنقرة', country: 'تركيا', lat: 39.9334, lng: 32.8597, method: 'MuslimWorldLeague', timezone: 'Europe/Istanbul' },
+  { name: 'الدار البيضاء', country: 'المغرب', lat: 33.5899, lng: -7.6039, method: 'MuslimWorldLeague', timezone: 'Africa/Casablanca' },
+  { name: 'الجزائر', country: 'الجزائر', lat: 36.7538, lng: 3.0588, method: 'MuslimWorldLeague', timezone: 'Africa/Algiers' },
+  { name: 'تونس', country: 'تونس', lat: 36.8065, lng: 10.1815, method: 'MuslimWorldLeague', timezone: 'Africa/Tunis' },
+  { name: 'عمان', country: 'الأردن', lat: 31.9454, lng: 35.9284, method: 'Egyptian', timezone: 'Asia/Amman' },
+  { name: 'بيروت', country: 'لبنان', lat: 33.8886, lng: 35.4955, method: 'Egyptian', timezone: 'Asia/Beirut' },
+  { name: 'الخرطوم', country: 'السودان', lat: 15.5007, lng: 32.5599, method: 'Egyptian', timezone: 'Africa/Khartoum' },
+  { name: 'لندن', country: 'بريطانيا', lat: 51.5072, lng: -0.1276, method: 'MuslimWorldLeague', timezone: 'Europe/London' },
+  { name: 'باريس', country: 'فرنسا', lat: 48.8566, lng: 2.3522, method: 'MuslimWorldLeague', timezone: 'Europe/Paris' },
+];

@@ -1,57 +1,167 @@
 // src/context/PrayerContext.js
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { calculatePrayerTimes, getNextPrayer, getCurrentPrayer } from '../utils/prayerTimes';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import {
+  calculatePrayerTimes,
+  calculateTomorrowPrayerTimes,
+  getNextPrayer,
+  getCurrentPrayer,
+  getLocationDateKey,
+  normalizeMadhab,
+} from '../utils/prayerTimes';
 import { storageBackend } from '../utils/storage';
+import { cancelPrayerNotifications, schedulePrayerNotifications } from '../utils/notifications';
+import { useNotification } from './NotificationContext';
 
 const DAILY_PRAYERS = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
 
 const PrayerContext = createContext();
 
-export const PrayerProvider = ({ children, location }) => {
+export const PrayerProvider = ({ children, location: initialLocation }) => {
+  const { reminderMinutes, recurringReminders } = useNotification();
   const [prayerTimes, setPrayerTimes] = useState(null);
+  const [tomorrowTimes, setTomorrowTimes] = useState(null);
   const [nextPrayer, setNextPrayer] = useState(null);
   const [currentPrayer, setCurrentPrayer] = useState(null);
   const [prayedStatus, setPrayedStatus] = useState({});
   const [streaks, setStreaks] = useState({});
   const [dailyStreak, setDailyStreak] = useState(0);
+  const [bestDailyStreak, setBestDailyStreak] = useState(0);
   const [showCongratulations, setShowCongratulations] = useState(false);
+  const [location, setLocationState] = useState(initialLocation || null);
+  const [madhab, setMadhabState] = useState('Shafi');
+  const [locationDateKey, setLocationDateKey] = useState(() => new Date().toDateString());
+
+  // Sync prop changes (App.js GPS) into internal state
+  useEffect(() => {
+    if (initialLocation) setLocationState(initialLocation);
+  }, [initialLocation?.latitude, initialLocation?.longitude]);
+
+  // Load persisted location if no prop yet - validate lat/lng are numbers
+  useEffect(() => {
+    if (!location) {
+      storageBackend.getSettings().then(s => {
+        if (s.location && !isNaN(parseFloat(s.location.latitude)) && !isNaN(parseFloat(s.location.longitude))) {
+          setLocationState(s.location);
+        } else if (s.location) {
+          // Corrupted storage (e.g., lat="Al May") - reset to Cairo
+          setLocationState({ latitude: 30.0444, longitude: 31.2357, name: 'القاهرة، مصر', method: 'Egyptian', timezone: 'Africa/Cairo', useDeviceTimezone: false });
+        }
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    storageBackend.getSettings().then(s => {
+      if (s && s.madhab) setMadhabState(normalizeMadhab(s.madhab));
+    }).catch(() => {});
+  }, []);
+
+  const recomputeTimes = (loc, madhabValue, at = new Date()) => {
+    if (!loc) return;
+    const normalizedMadhab = normalizeMadhab(madhabValue);
+    const dateKey = getLocationDateKey(loc, at);
+    const times = calculatePrayerTimes(loc.latitude, loc.longitude, loc.method, loc.timezone, at, normalizedMadhab);
+    const tomorrow = calculateTomorrowPrayerTimes(loc.latitude, loc.longitude, loc.method, loc.timezone, at, normalizedMadhab);
+    setPrayerTimes(times);
+    setTomorrowTimes(tomorrow);
+    setNextPrayer(getNextPrayer(times, tomorrow, at));
+    setCurrentPrayer(getCurrentPrayer(times, at));
+    setLocationDateKey(dateKey);
+    loadTodayData(dateKey);
+  };
 
   useEffect(() => {
     if (location) {
-      const times = calculatePrayerTimes(location.latitude, location.longitude);
-      setPrayerTimes(times);
-      setNextPrayer(getNextPrayer(times));
-      setCurrentPrayer(getCurrentPrayer(times));
-      loadTodayData();
+      recomputeTimes(location, madhab);
     }
-  }, [location]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location, madhab]);
 
-  const loadTodayData = async () => {
-    const prayed = await storageBackend.getPrayerStatus();
+  // Location-calendar day rollover and intraday next/current refresh. This uses
+  // the selected location's calendar date, not necessarily the device date.
+  const currentDayRef = useRef(locationDateKey);
+  useEffect(() => {
+    currentDayRef.current = locationDateKey;
+  }, [locationDateKey]);
+  useEffect(() => {
+    if (!location) return undefined;
+    const t = setInterval(() => {
+      const now = new Date();
+      const today = getLocationDateKey(location, now);
+      if (today !== currentDayRef.current) {
+        currentDayRef.current = today;
+        recomputeTimes(location, madhab, now);
+        return;
+      }
+      if (prayerTimes) {
+        setNextPrayer(getNextPrayer(prayerTimes, tomorrowTimes, now));
+        setCurrentPrayer(getCurrentPrayer(prayerTimes, now));
+      }
+    }, 15000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location, madhab, prayerTimes, tomorrowTimes]);
+
+  const setLocation = async (newLoc) => {
+    setLocationState(newLoc);
+    const settings = await storageBackend.getSettings();
+    await storageBackend.saveSettings({ ...settings, location: newLoc });
+  };
+
+  const setMadhab = async (newMadhab) => {
+    const normalized = normalizeMadhab(newMadhab);
+    setMadhabState(normalized);
+    const settings = await storageBackend.getSettings();
+    await storageBackend.saveSettings({ ...settings, madhab: normalized });
+  };
+
+  const loadTodayData = async (dateKey) => {
+    const targetDay = dateKey || locationDateKey;
+    // Parallelize storage reads for faster startup
+    const [prayed, allStreaks, ds, best] = await Promise.all([
+      storageBackend.getPrayerStatus(targetDay),
+      storageBackend.getAllStreaks(),
+      storageBackend.getDailyStreak(),
+      storageBackend.getBestDailyStreak(),
+    ]);
     setPrayedStatus(prayed);
-    const allStreaks = await storageBackend.getAllStreaks();
     setStreaks(allStreaks);
-    const ds = await storageBackend.getDailyStreak();
     setDailyStreak(ds);
+    setBestDailyStreak(best);
   };
 
   const hideCongratulations = () => {
     setShowCongratulations(false);
   };
 
+  const isPrayerTimePassed = (prayerName) => {
+    if (prayerName === 'sunrise') return false;
+    if (!prayerTimes || !prayerTimes[prayerName]) return false;
+    return prayerTimes[prayerName] <= new Date();
+  };
+
   const markAsPrayed = async (prayerName) => {
+    if (prayerName === 'sunrise') return null;
+    if (!isPrayerTimePassed(prayerName)) return null;
     try {
-      await storageBackend.savePrayerStatus(prayerName, true);
-      const newStreak = await storageBackend.updateStreak(prayerName);
-      
+      const targetDay = prayerTimes?.dateKey || locationDateKey;
+      await storageBackend.savePrayerStatus(prayerName, true, targetDay);
+      const newStreak = await storageBackend.updateStreak(prayerName, targetDay);
+
+      // Stop the "you haven't prayed" reminders for this prayer — only for
+      // today's set, tomorrow's must stay armed
+      await cancelPrayerNotifications(prayerName, targetDay);
+
       const newStatus = { ...prayedStatus, [prayerName]: { completed: true, timestamp: new Date().toISOString() } };
       setPrayedStatus(newStatus);
       setStreaks(prev => ({ ...prev, [prayerName]: newStreak }));
       
       const allPrayed = DAILY_PRAYERS.every(p => newStatus[p]?.completed);
       if (allPrayed) {
-        const ds = await storageBackend.updateDailyStreak();
+        const ds = await storageBackend.updateDailyStreak(targetDay);
         setDailyStreak(ds);
+        const best = await storageBackend.getBestDailyStreak();
+        setBestDailyStreak(best);
         setShowCongratulations(true);
       }
       
@@ -64,12 +174,22 @@ export const PrayerProvider = ({ children, location }) => {
 
   const unmarkAsPrayed = async (prayerName) => {
     try {
-      await storageBackend.savePrayerStatus(prayerName, false);
-      const result = await storageBackend.undoStreak(prayerName);
-      
-      // Update daily streak
+      const targetDay = prayerTimes?.dateKey || locationDateKey;
+      await storageBackend.savePrayerStatus(prayerName, false, targetDay);
+      const result = await storageBackend.undoStreak(prayerName, targetDay);
+
+      // Re-arm whatever is still in the future for this prayer (the scheduler
+      // skips already-passed times, so remaining reminders come back)
+      const prayerTime = prayerTimes?.[prayerName];
+      if (prayerTime) {
+        await schedulePrayerNotifications(prayerName, prayerTime, reminderMinutes, { recurring: recurringReminders, day: targetDay });
+      }
+
+      // Update daily streak (count + best)
       const newDailyStreak = await storageBackend.getDailyStreak();
       setDailyStreak(newDailyStreak);
+      const best = await storageBackend.getBestDailyStreak();
+      setBestDailyStreak(best);
       
       setPrayedStatus(prev => {
         const updated = { ...prev };
@@ -89,6 +209,8 @@ export const PrayerProvider = ({ children, location }) => {
     if (currentlyPrayed) {
       return await unmarkAsPrayed(prayerName);
     } else {
+      if (prayerName === 'sunrise') return null;
+      if (!isPrayerTimePassed(prayerName)) return null;
       return await markAsPrayed(prayerName);
     }
   };
@@ -104,17 +226,25 @@ export const PrayerProvider = ({ children, location }) => {
   return (
     <PrayerContext.Provider value={{
       prayerTimes,
+      tomorrowTimes,
       nextPrayer,
       currentPrayer,
       prayedStatus,
       streaks,
       dailyStreak,
+      bestDailyStreak,
+      location,
+      setLocation,
+      madhab,
+      setMadhab,
+      locationDateKey,
       showCongratulations,
       markAsPrayed,
       unmarkAsPrayed,
       togglePrayed,
       isPrayed,
       getPrayerStreak,
+      isPrayerTimePassed,
       loadTodayData,
       hideCongratulations,
     }}>

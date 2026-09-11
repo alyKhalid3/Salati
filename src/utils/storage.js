@@ -3,6 +3,13 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+function shiftDateKey(dateKey, days) {
+    const date = new Date(dateKey || new Date().toDateString());
+    if (isNaN(date.getTime())) return new Date().toDateString();
+    date.setDate(date.getDate() + days);
+    return date.toDateString();
+}
+
 class StorageBackend {
     constructor() {
         this.dbName = 'salati_db';
@@ -131,8 +138,8 @@ class StorageBackend {
         }
     }
 
-    async savePrayerStatus(prayerName, status) {
-        const today = new Date().toDateString();
+    async savePrayerStatus(prayerName, status, dateKey) {
+        const today = dateKey || new Date().toDateString();
         let prayedData = await this.get(this.stores.PRAYED, today) || {};
         prayedData[prayerName] = {
             completed: status,
@@ -145,9 +152,9 @@ class StorageBackend {
         return await this.get(this.stores.PRAYED, date) || {};
     }
 
-    async updateStreak(prayerName) {
-        const today = new Date().toDateString();
-        const yesterday = new Date(Date.now() - 86400000).toDateString();
+    async updateStreak(prayerName, dateKey) {
+        const today = dateKey || new Date().toDateString();
+        const yesterday = shiftDateKey(today, -1);
         
         let streak = await this.get(this.stores.STREAKS, prayerName) || {
             current: 0,
@@ -174,13 +181,13 @@ class StorageBackend {
         }
 
         await this.set(this.stores.STREAKS, prayerName, streak);
-        await this.checkDailyStreak();
+        await this.checkDailyStreak(today);
         return streak;
     }
 
-    async undoStreak(prayerName) {
-        const today = new Date().toDateString();
-        const yesterday = new Date(Date.now() - 86400000).toDateString();
+    async undoStreak(prayerName, dateKey) {
+        const today = dateKey || new Date().toDateString();
+        const yesterday = shiftDateKey(today, -1);
         
         let streak = await this.get(this.stores.STREAKS, prayerName) || {
             current: 0,
@@ -194,14 +201,14 @@ class StorageBackend {
         }
 
         await this.set(this.stores.STREAKS, prayerName, streak);
-        await this.undoDailyStreak();
+        await this.undoDailyStreak(today);
         return streak;
     }
 
-    async undoDailyStreak() {
+    async undoDailyStreak(dateKey) {
         const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
-        const today = new Date().toDateString();
-        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        const today = dateKey || new Date().toDateString();
+        const yesterday = shiftDateKey(today, -1);
         
         // Check if all prayers are still completed
         let allPrayed = true;
@@ -241,24 +248,26 @@ class StorageBackend {
         return await this.getAll(this.stores.STREAKS);
     }
 
-    async updateDailyStreak() {
-        const today = new Date().toDateString();
-        const yesterday = new Date(Date.now() - 86400000).toDateString();
+    async updateDailyStreak(dateKey) {
+        const today = dateKey || new Date().toDateString();
+        const yesterday = shiftDateKey(today, -1);
         
         let daily = await this.get(this.stores.DAILY_STREAK, 'current') || {
             count: 0,
+            best: 0,
             lastDate: null,
             history: []
         };
 
         if (daily.lastDate === today) return daily.count;
 
-        if (daily.lastDate === yesterday) {
-            daily.count += 1;
+        if (daily.lastDate === yesterday || !daily.lastDate) {
+            daily.count = (daily.count || 0) + 1;
         } else {
             daily.count = 1;
         }
 
+        daily.best = Math.max(daily.best || 0, daily.count);
         daily.lastDate = today;
         daily.history = daily.history || [];
         daily.history.push({ date: today, count: daily.count });
@@ -276,9 +285,20 @@ class StorageBackend {
         return data ? data.count : 0;
     }
 
-    async checkDailyStreak() {
+    async getBestDailyStreak() {
+        const data = await this.get(this.stores.DAILY_STREAK, 'current');
+        return data ? (data.best || data.count || 0) : 0;
+    }
+
+    async getDailyStreakData() {
+        const data = await this.get(this.stores.DAILY_STREAK, 'current');
+        if (!data) return { count: 0, best: 0, lastDate: null };
+        return { count: data.count || 0, best: data.best || data.count || 0, lastDate: data.lastDate || null };
+    }
+
+    async checkDailyStreak(dateKey) {
         const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
-        const today = new Date().toDateString();
+        const today = dateKey || new Date().toDateString();
         const prayedData = await this.get(this.stores.PRAYED, today) || {};
         
         const allPrayed = prayers.every(p => prayedData[p] && prayedData[p].completed);
@@ -298,12 +318,17 @@ class StorageBackend {
     }
 
     async getSettings() {
-        return await this.get(this.stores.SETTINGS, 'app_settings') || {
+        const stored = await this.get(this.stores.SETTINGS, 'app_settings');
+        if (stored) return stored;
+        // No stored settings: location stays null so startup can tell
+        // "never chosen" apart from a real saved fix (and run GPS).
+        // Every consumer must fall back to Cairo when location is null.
+        return {
             reminderMinutes: 10,
             notificationsEnabled: true,
             calculationMethod: 'Egyptian',
             madhab: 'Shafi',
-            location: { latitude: 30.0444, longitude: 31.2357, name: 'القاهرة، مصر' },
+            location: null,
             theme: 'dark',
             language: 'ar'
         };
