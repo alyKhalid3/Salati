@@ -97,10 +97,10 @@ export const schedulePrayerNotifications = (prayerId, prayerTime, reminderMinute
     }
     const reminderTime = new Date(prayerTime.getTime() - reminderMinutes * 60 * 1000);
     if (reminderTime > now) {
-      webTimers[`${dayKey}_${prayerId}_before`] = setTimeout(() => showWebNotification('صلاتي - Salati', `⏰ تنبيه: حان وقت صلاة ${prayerName} بعد ${reminderMinutes} دقائق`, `prayer-${prayerId}-${dayKey}-reminder`), reminderTime - now);
+      webTimers[`${dayKey}_${prayerId}_before`] = setTimeout(() => showWebNotification('صلاتي - Salati', `صلاة ${prayerName} بعد ${reminderMinutes} دقائق`, `prayer-${prayerId}-${dayKey}-reminder`), reminderTime - now);
     }
     if (prayerTime > now) {
-      webTimers[`${dayKey}_${prayerId}_ontime`] = setTimeout(() => showWebNotification('صلاتي - Salati', `🕌 حان الآن وقت صلاة ${prayerName}`, `prayer-${prayerId}-${dayKey}`), prayerTime - now);
+      webTimers[`${dayKey}_${prayerId}_ontime`] = setTimeout(() => showWebNotification('صلاتي - Salati', `حان وقت صلاة ${prayerName}`, `prayer-${prayerId}-${dayKey}`), prayerTime - now);
     }
     if (recurring) {
       // Steady 10-minute cadence after prayer time, up to 1 hour (6 reminders).
@@ -108,8 +108,7 @@ export const schedulePrayerNotifications = (prayerId, prayerTime, reminderMinute
       for (const interval of [10, 20, 30, 40, 50, 60]) {
         const t = new Date(prayerTime.getTime() + interval * 60000);
         if (t > now) {
-          const elapsed = interval === 10 ? 'مرت 10 دقائق' : `مرت ${interval} دقيقة`;
-          webTimers[`${dayKey}_${prayerId}_${interval}`] = setTimeout(() => showWebNotification('صلاتي - Salati', `${elapsed} على صلاة ${prayerName}. لم تصلِّ بعد؟`, `prayer-${prayerId}-${dayKey}-${interval}`), t - now);
+          webTimers[`${dayKey}_${prayerId}_${interval}`] = setTimeout(() => showWebNotification('صلاتي - Salati', `ما زالت صلاة ${prayerName} بانتظارك`, `prayer-${prayerId}-${dayKey}-${interval}`), t - now);
         }
       }
     }
@@ -121,8 +120,8 @@ export const schedulePrayerNotifications = (prayerId, prayerTime, reminderMinute
   if (reminderTime > now) {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: `⏰ تنبيه: حان وقت صلاة ${prayerName} بعد ${reminderMinutes} دقائق`,
-        body: 'لَا تُؤَخِّرْ صَلَاتَكَ، فَالشَّيْطَانُ يَرْقُبُكَ',
+        title: `صلاة ${prayerName} بعد ${reminderMinutes} دقائق`,
+        body: 'قم واستعد للصلاة',
         sound: 'default',
         priority: Notifications.AndroidNotificationPriority.HIGH,
         data: { type: 'before', prayer: prayerId, day: dayKey },
@@ -133,8 +132,8 @@ export const schedulePrayerNotifications = (prayerId, prayerTime, reminderMinute
   if (prayerTime > now) {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: `🕌 حان الآن وقت صلاة ${prayerName}`,
-        body: 'قُمْ وَصَلِّ الْآنَ',
+        title: `حان وقت صلاة ${prayerName}`,
+        body: 'حي على الصلاة',
         sound: 'default',
         priority: Notifications.AndroidNotificationPriority.HIGH,
         data: { type: 'atTime', prayer: prayerId, day: dayKey },
@@ -148,11 +147,10 @@ export const schedulePrayerNotifications = (prayerId, prayerTime, reminderMinute
     for (const interval of [10, 20, 30, 40, 50, 60]) {
       const triggerTime = new Date(prayerTime.getTime() + interval * 60 * 1000);
       if (triggerTime > now) {
-        const elapsed = interval === 10 ? 'مرت 10 دقائق' : `مرت ${interval} دقيقة`;
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: `🔔 تذكير: صلاة ${prayerName}`,
-            body: `${elapsed} على صلاة ${prayerName}. لم تصلِّ بعد؟`,
+            title: `تذكير: صلاة ${prayerName}`,
+            body: `ما زالت صلاة ${prayerName} بانتظارك`,
             sound: 'default',
             priority: Notifications.AndroidNotificationPriority.HIGH,
             data: { type: 'reminder', prayer: prayerId, day: dayKey, interval },

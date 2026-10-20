@@ -19,3 +19,13 @@ yarn-error.log*
 .pnp.js
 coverage/
 *.log
+
+# Dev/debug artifacts (never ship these)
+/*.png
+/metro_bundle*.js
+/card-mock.html
+/*.bundle
+*.tmp
+.hermes-tmp*
+android/app/src/main/assets/index.android.bundle
+android/app/src/main/res/drawable-*/node_modules_*

@@ -1,7 +1,7 @@
 // App.js - Main Entry Point
 import 'react-native-gesture-handler';
-import React, { useEffect, useState, lazy, Suspense } from 'react';
-import { AppRegistry, Platform, Text, View } from 'react-native';
+import React, { useEffect, useState, useRef, lazy, Suspense } from 'react';
+import { AppRegistry, Platform, Text, View, Animated, StyleSheet, Easing } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -11,11 +11,13 @@ import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 
 import HomeScreen from './src/screens/HomeScreen';
+import BootLoader from './src/components/BootLoader';
 import { NotificationProvider } from './src/context/NotificationContext';
-import { PrayerProvider } from './src/context/PrayerContext';
+import { PrayerProvider, usePrayer } from './src/context/PrayerContext';
 import { resolveGpsLocation } from './src/utils/prayerTimes';
 import { registerRootComponent } from 'expo';
 import * as SplashScreen from 'expo-splash-screen';
+import { storageBackend } from './src/utils/storage';
 SplashScreen.preventAutoHideAsync().catch(()=>{});
 const SettingsScreen = lazy(() => import('./src/screens/SettingsScreen'));
 
@@ -32,10 +34,64 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// Status bar icons follow the effective theme (dark icons on daylight).
+function ThemedStatusBar() {
+  try {
+    const { effectiveTheme } = usePrayer();
+    return <StatusBar style={effectiveTheme === 'light' ? 'dark' : 'light'} />;
+  } catch {
+    return <StatusBar style="light" />;
+  }
+}
+
+// Sun-driven theme crossfade: when day flips to night (or back), hold a
+// full-screen wash of the outgoing background and fade it out over ~1s,
+// so the switch glides instead of snapping.
+function ThemeFade() {
+  const { effectiveTheme, C } = usePrayer();
+  const theme = effectiveTheme;
+  const bg = (C && C.bg) || '#0a0a0a';
+  const opacity = useRef(new Animated.Value(0)).current;
+  const [wash, setWash] = useState(bg);
+  const prevTheme = useRef(theme);
+  const prevBg = useRef(bg);
+  useEffect(() => {
+    if (prevTheme.current && theme && prevTheme.current !== theme) {
+      setWash(prevBg.current);
+      opacity.setValue(1);
+      const fade = Animated.timing(opacity, { toValue: 0, duration: 1000, easing: Easing.out(Easing.ease), useNativeDriver: true });
+      fade.start();
+      return () => fade.stop();
+    }
+    prevTheme.current = theme;
+    prevBg.current = bg;
+    return undefined;
+  }, [theme]);
+  if (!theme) return null;
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFillObject, { backgroundColor: wash, opacity, zIndex: 99, elevation: 99 }]}
+    />
+  );
+}
+
 export default function App() {
-  // Set default location synchronously so PrayerProvider can render immediately (no 10s GPS block)
-  const [location, setLocation] = useState({ latitude: 30.0444, longitude: 31.2357, name: 'القاهرة، مصر', method: 'Egyptian', timezone: 'Africa/Cairo', useDeviceTimezone: false, source: 'preset' });
+  // Start with no location so first paint never flashes the Cairo default:
+  // the saved location (or GPS fix) resolves first, splash hides after.
+  const CAIRO_FALLBACK = { latitude: 30.0444, longitude: 31.2357, name: 'القاهرة، مصر', method: 'Egyptian', timezone: 'Africa/Cairo', useDeviceTimezone: false, source: 'preset' };
+  const [location, setLocation] = useState(null);
+  const [locationReady, setLocationReady] = useState(false);
+  const resolvedRef = useRef(false);
+  const markResolved = (loc) => {
+    if (loc) setLocation(loc);
+    if (!resolvedRef.current) {
+      resolvedRef.current = true;
+      setLocationReady(true);
+    }
+  };
   const [appReady, setAppReady] = useState(false);
+  const [bootMinDone, setBootMinDone] = useState(false);
 
   // Web: match index.html lang/dir + load Amiri/Cairo - batched to avoid forced reflow
   useEffect(() => {
@@ -98,54 +154,58 @@ export default function App() {
   useEffect(() => {
     // Defer heavy work until after first paint
     const t = setTimeout(() => {
-      requestNotificationPermissionAsync();
+      // Don't request notification permission on startup — it blocks the app
+      // behind a system dialog. Only request when user enables notifications
+      // in settings (see NotificationContext).
       getLocation();
     }, 500);
-    return () => clearTimeout(t);
+    // Let the boot wordmark fill play out (~3s) before revealing home.
+    const minTime = setTimeout(() => setBootMinDone(true), 3200);
+    // Safety net: never leave the user on splash — fall back to Cairo.
+    const fallback = setTimeout(() => {
+      if (!resolvedRef.current) markResolved(CAIRO_FALLBACK);
+    }, 2500);
+    return () => { clearTimeout(t); clearTimeout(minTime); clearTimeout(fallback); };
   }, []);
 
-  // Hide splash screen after layout
+  // Reveal home only when the location is in AND the boot fill has played.
+  // The native splash hides as soon as the location is in so the Salati
+  // fill loader (rendered underneath it) gets its moment before home.
+  const revealed = appReady && bootMinDone;
   useEffect(() => {
-    if (location) {
-      setAppReady(true);
+    if (locationReady && location) setAppReady(true);
+  }, [locationReady, location]);
+  useEffect(() => {
+    if (appReady) {
       SplashScreen.hideAsync().catch(()=>{});
     }
-  }, [location]);
+  }, [appReady]);
+
+  const requestLocationPermission = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      return status === 'granted';
+    } catch {
+      return false;
+    }
+  };
 
   const getLocation = async () => {
     try {
-      const { storageBackend } = await import('./src/utils/storage');
-      const persistLocation = async (loc) => {
-        try {
-          const current = await storageBackend.getSettings();
-          await storageBackend.saveSettings({ ...current, location: loc });
-        } catch {}
-      };
-      const saved = await storageBackend.getSettings();
-      if (saved.location && saved.location.latitude && saved.location.longitude) {
-        setLocation(saved.location);
+      // Timeout after 3s - never let storage hang startup
+      const saved = await Promise.race([
+        storageBackend.getSettings(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('storage-timeout')), 3000)),
+      ]);
+      if (saved && saved.location && saved.location.latitude && saved.location.longitude) {
+        markResolved(saved.location);
         return;
       }
-      // Resolve the startup fix without blocking first paint for long
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-      // Use high accuracy like the location picker (balanced one-shot fixes can
-      // stall on some devices); 10s cap so startup is never blocked long.
-      const loc = await Promise.race([
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('gps-timeout')), 10000)),
-      ]);
-      // Set immediately with coordinates, then reverse geocode in background without blocking startup.
-      // Persist both so a cold start restores the last GPS fix even if GPS is slow/unavailable next time.
-      const immediate = resolveGpsLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-      setLocation(immediate);
-      persistLocation(immediate);
-      Location.reverseGeocodeAsync({ latitude: loc.coords.latitude, longitude: loc.coords.longitude }).then(rev => {
-        const resolved = resolveGpsLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude, address: rev && rev[0] ? rev[0] : null });
-        setLocation(resolved);
-        persistLocation(resolved);
-      }).catch(()=>{});
-    } catch (e) { console.log('[Salati] getLocation: FAILED', e); }
+      markResolved(CAIRO_FALLBACK);
+    } catch (e) {
+      console.log('[Salati] getLocation: FAILED', e);
+      markResolved(CAIRO_FALLBACK);
+    }
   };
 
   const requestNotificationPermissionAsync = async () => {
@@ -168,8 +228,12 @@ export default function App() {
       <NotificationProvider>
         <PrayerProvider location={location}>
           <NavigationContainer>
-            <StatusBar style="light" />
-            <Suspense fallback={<View style={{ flex:1, backgroundColor:'#0a0a0a', justifyContent:'center', alignItems:'center' }}><Text style={{ color:'#f0ece4', fontFamily:'Cairo' }}>جاري التحميل...</Text></View>}>
+            <ThemedStatusBar />
+            <ThemeFade />
+            {!revealed ? (
+              <BootLoader />
+            ) : (
+            <Suspense fallback={<View style={{ flex: 1, backgroundColor: '#0a0a0a' }} />}>
               <Stack.Navigator
                 screenOptions={{
                   headerShown: false,
@@ -181,6 +245,7 @@ export default function App() {
                 <Stack.Screen name="Settings" component={SettingsScreen} />
               </Stack.Navigator>
             </Suspense>
+            )}
           </NavigationContainer>
         </PrayerProvider>
       </NotificationProvider>

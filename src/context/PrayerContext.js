@@ -1,20 +1,33 @@
 // src/context/PrayerContext.js
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
 import {
   calculatePrayerTimes,
   calculateTomorrowPrayerTimes,
   getNextPrayer,
   getCurrentPrayer,
+  getDayPhase,
   getLocationDateKey,
   normalizeMadhab,
 } from '../utils/prayerTimes';
 import { storageBackend } from '../utils/storage';
+import { THEMES, ATMOSPHERE } from '../utils/theme';
 import { cancelPrayerNotifications, schedulePrayerNotifications } from '../utils/notifications';
 import { useNotification } from './NotificationContext';
 
 const DAILY_PRAYERS = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
 
+// Local day-key shift (mirrors storage.js) so streak math stays synchronous.
+const shiftKey = (dateKey, days) => {
+  const d = new Date(dateKey);
+  if (isNaN(d.getTime())) return dateKey;
+  d.setDate(d.getDate() + days);
+  return d.toDateString();
+};
+
 const PrayerContext = createContext();
+
+// Shared stable fallback so memoized rows don't re-render on new literals.
+const EMPTY_STREAK = { current: 0, best: 0, lastDate: null };
 
 export const PrayerProvider = ({ children, location: initialLocation }) => {
   const { reminderMinutes, recurringReminders } = useNotification();
@@ -26,9 +39,11 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
   const [streaks, setStreaks] = useState({});
   const [dailyStreak, setDailyStreak] = useState(0);
   const [bestDailyStreak, setBestDailyStreak] = useState(0);
+  const [dailyLastDate, setDailyLastDate] = useState(null);
   const [showCongratulations, setShowCongratulations] = useState(false);
   const [location, setLocationState] = useState(initialLocation || null);
   const [madhab, setMadhabState] = useState('Shafi');
+  const [tickNow, setTickNow] = useState(() => new Date());
   const [locationDateKey, setLocationDateKey] = useState(() => new Date().toDateString());
 
   // Sync prop changes (App.js GPS) into internal state
@@ -87,6 +102,7 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
     if (!location) return undefined;
     const t = setInterval(() => {
       const now = new Date();
+      setTickNow(now);
       const today = getLocationDateKey(location, now);
       if (today !== currentDayRef.current) {
         currentDayRef.current = today;
@@ -118,16 +134,18 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
   const loadTodayData = async (dateKey) => {
     const targetDay = dateKey || locationDateKey;
     // Parallelize storage reads for faster startup
-    const [prayed, allStreaks, ds, best] = await Promise.all([
+    const [prayed, allStreaks, ds, best, dailyData] = await Promise.all([
       storageBackend.getPrayerStatus(targetDay),
       storageBackend.getAllStreaks(),
       storageBackend.getDailyStreak(),
       storageBackend.getBestDailyStreak(),
+      storageBackend.getDailyStreakData(),
     ]);
     setPrayedStatus(prayed);
     setStreaks(allStreaks);
     setDailyStreak(ds);
     setBestDailyStreak(best);
+    setDailyLastDate(dailyData.lastDate || null);
   };
 
   const hideCongratulations = () => {
@@ -143,38 +161,94 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
   const markAsPrayed = async (prayerName) => {
     if (prayerName === 'sunrise') return null;
     if (!isPrayerTimePassed(prayerName)) return null;
+    const targetDay = prayerTimes?.dateKey || locationDateKey;
+    // Optimistic: the checkmark appears instantly; storage + streaks follow.
+    const optimistic = { ...prayedStatus, [prayerName]: { completed: true, timestamp: new Date().toISOString() } };
+    setPrayedStatus(optimistic);
+    // Congrats pops instantly on the last prayer; storage + counts catch up below.
+    const allPrayed = DAILY_PRAYERS.every(p => optimistic[p]?.completed);
+    if (allPrayed) setShowCongratulations(true);
+    // Optimistic streaks: same rule storage uses, painted now, reconciled after.
+    const prevStreaks = streaks;
+    const prevDaily = dailyStreak;
+    const prevBest = bestDailyStreak;
+    const prevDailyDate = dailyLastDate;
+    const yesterday = shiftKey(targetDay, -1);
+    const cur = streaks[prayerName] || EMPTY_STREAK;
+    if (cur.lastDate !== targetDay) {
+      const next = cur.lastDate === yesterday ? cur.current + 1 : 1;
+      setStreaks(prev => ({ ...prev, [prayerName]: { ...cur, current: next, best: Math.max(cur.best, next), lastDate: targetDay } }));
+    }
+    if (allPrayed && dailyLastDate !== targetDay) {
+      const nextDaily = (!dailyLastDate || dailyLastDate === yesterday) ? dailyStreak + 1 : 1;
+      setDailyStreak(nextDaily);
+      setBestDailyStreak(Math.max(bestDailyStreak, nextDaily));
+      setDailyLastDate(targetDay);
+    }
     try {
-      const targetDay = prayerTimes?.dateKey || locationDateKey;
-      await storageBackend.savePrayerStatus(prayerName, true, targetDay);
-      const newStreak = await storageBackend.updateStreak(prayerName, targetDay);
+      // Parallelize independent storage writes + fire-and-forget notifications
+      // so nothing blocks the UI thread
+      const [newStreak] = await Promise.all([
+        storageBackend.savePrayerStatus(prayerName, true, targetDay)
+          .then(() => storageBackend.updateStreak(prayerName, targetDay)),
+      ]);
+      // Don't await — let it run in background after UI updates
+      cancelPrayerNotifications(prayerName, targetDay).catch(() => {});
 
-      // Stop the "you haven't prayed" reminders for this prayer — only for
-      // today's set, tomorrow's must stay armed
-      await cancelPrayerNotifications(prayerName, targetDay);
-
-      const newStatus = { ...prayedStatus, [prayerName]: { completed: true, timestamp: new Date().toISOString() } };
-      setPrayedStatus(newStatus);
       setStreaks(prev => ({ ...prev, [prayerName]: newStreak }));
-      
-      const allPrayed = DAILY_PRAYERS.every(p => newStatus[p]?.completed);
+
       if (allPrayed) {
-        const ds = await storageBackend.updateDailyStreak(targetDay);
+        const [ds, best, dailyData] = await Promise.all([
+          storageBackend.updateDailyStreak(targetDay),
+          storageBackend.getBestDailyStreak(),
+          storageBackend.getDailyStreakData(),
+        ]);
         setDailyStreak(ds);
-        const best = await storageBackend.getBestDailyStreak();
         setBestDailyStreak(best);
-        setShowCongratulations(true);
+        setDailyLastDate(dailyData.lastDate || targetDay);
       }
-      
+
       return newStreak;
     } catch (error) {
       console.log('Error marking as prayed:', error);
+      // Roll back the optimistic mark so the UI never lies
+      setPrayedStatus(prev => {
+        const updated = { ...prev };
+        delete updated[prayerName];
+        return updated;
+      });
+      setStreaks(prevStreaks);
+      setDailyStreak(prevDaily);
+      setBestDailyStreak(prevBest);
+      setDailyLastDate(prevDailyDate);
       return null;
     }
   };
 
   const unmarkAsPrayed = async (prayerName) => {
+    const targetDay = prayerTimes?.dateKey || locationDateKey;
+    // Optimistic: uncheck instantly, persist in background.
+    const prevEntry = prayedStatus[prayerName];
+    const prevStreaks = streaks;
+    const prevDaily = dailyStreak;
+    const prevBest = bestDailyStreak;
+    const prevDailyDate = dailyLastDate;
+    const yesterday = shiftKey(targetDay, -1);
+    setPrayedStatus(prev => {
+      const updated = { ...prev };
+      delete updated[prayerName];
+      return updated;
+    });
+    // Optimistic undo: mirror storage.undoStreak / undoDailyStreak instantly.
+    const curUndo = streaks[prayerName];
+    if (curUndo && curUndo.lastDate === targetDay) {
+      setStreaks(prev => ({ ...prev, [prayerName]: { ...curUndo, current: Math.max(0, curUndo.current - 1), lastDate: yesterday } }));
+    }
+    if (dailyLastDate === targetDay) {
+      setDailyStreak(Math.max(0, dailyStreak - 1));
+      setDailyLastDate(yesterday);
+    }
     try {
-      const targetDay = prayerTimes?.dateKey || locationDateKey;
       await storageBackend.savePrayerStatus(prayerName, false, targetDay);
       const result = await storageBackend.undoStreak(prayerName, targetDay);
 
@@ -186,21 +260,22 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
       }
 
       // Update daily streak (count + best)
-      const newDailyStreak = await storageBackend.getDailyStreak();
-      setDailyStreak(newDailyStreak);
-      const best = await storageBackend.getBestDailyStreak();
-      setBestDailyStreak(best);
-      
-      setPrayedStatus(prev => {
-        const updated = { ...prev };
-        delete updated[prayerName];
-        return updated;
-      });
+      const dailyData = await storageBackend.getDailyStreakData();
+      setDailyStreak(dailyData.count);
+      setBestDailyStreak(dailyData.best);
+      setDailyLastDate(dailyData.lastDate || null);
+
       setStreaks(prev => ({ ...prev, [prayerName]: result }));
-      
+
       return result;
     } catch (error) {
       console.log('Error unmarking as prayed:', error);
+      // Roll back so the UI never lies
+      if (prevEntry) setPrayedStatus(prev => ({ ...prev, [prayerName]: prevEntry }));
+      setStreaks(prevStreaks);
+      setDailyStreak(prevDaily);
+      setBestDailyStreak(prevBest);
+      setDailyLastDate(prevDailyDate);
       return null;
     }
   };
@@ -220,11 +295,30 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
   };
 
   const getPrayerStreak = (prayerName) => {
-    return streaks[prayerName] || { current: 0, best: 0, lastDate: null };
+    return streaks[prayerName] || EMPTY_STREAK;
   };
 
-  return (
-    <PrayerContext.Provider value={{
+  // Daylight theme follows the sun: bright while the sun is up at the
+  // selected location, dark otherwise. Re-evaluated on the 15s tick.
+  let isDaytime = true;
+  try {
+    const sr = prayerTimes && prayerTimes.sunrise;
+    const mg = prayerTimes && prayerTimes.maghrib;
+    if (sr instanceof Date && mg instanceof Date && !isNaN(sr) && !isNaN(mg)) {
+      isDaytime = tickNow >= sr && tickNow <= mg;
+    }
+  } catch {}
+  // No toggle: the theme follows the sun at the selected location —
+  // bright ivory while the sun is up, dark after maghrib.
+  const effectiveTheme = isDaytime ? 'light' : 'dark';
+  const C = THEMES[effectiveTheme];
+  // Living atmosphere for daylight mode (tinted hero glows + phase chip).
+  const phase = getDayPhase(prayerTimes, tickNow);
+  const atmo = ATMOSPHERE[phase.key] || ATMOSPHERE.night;
+
+  // Memoized value: without this, every per-second countdown tick creates a
+  // new object and re-renders every consumer even when nothing changed.
+  const value = useMemo(() => ({
       prayerTimes,
       tomorrowTimes,
       nextPrayer,
@@ -233,10 +327,16 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
       streaks,
       dailyStreak,
       bestDailyStreak,
+      dailyLastDate,
       location,
       setLocation,
       madhab,
       setMadhab,
+      isDaytime,
+      effectiveTheme,
+      C,
+      phase,
+      atmo,
       locationDateKey,
       showCongratulations,
       markAsPrayed,
@@ -247,7 +347,10 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
       isPrayerTimePassed,
       loadTodayData,
       hideCongratulations,
-    }}>
+  }), [prayerTimes, tomorrowTimes, nextPrayer, currentPrayer, prayedStatus, streaks, dailyStreak, bestDailyStreak, dailyLastDate, location, setLocation, madhab, setMadhab, isDaytime, effectiveTheme, C, phase, atmo, locationDateKey, showCongratulations, markAsPrayed, unmarkAsPrayed, togglePrayed, isPrayed, getPrayerStreak, isPrayerTimePassed, loadTodayData, hideCongratulations, reminderMinutes, recurringReminders, tickNow]);
+
+  return (
+    <PrayerContext.Provider value={value}>
       {children}
     </PrayerContext.Provider>
   );

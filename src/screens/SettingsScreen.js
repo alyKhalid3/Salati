@@ -8,15 +8,12 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
-  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotification } from '../context/NotificationContext';
 import { usePrayer } from '../context/PrayerContext';
 import { PRAYER_NAMES } from '../utils/prayerTimes';
 import { storageBackend } from '../utils/storage';
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
 
 export default function SettingsScreen({ navigation }) {
   const {
@@ -27,7 +24,8 @@ export default function SettingsScreen({ navigation }) {
     recurringReminders,
     setRecurringReminders,
   } = useNotification();
-  const { madhab, setMadhab, location } = usePrayer();
+  const { madhab, setMadhab, location, C } = usePrayer();
+  const styles = React.useMemo(() => getStyles(C), [C]);
 
   const reminderOptions = [5, 10, 15, 30];
   const methodLabels = {
@@ -53,55 +51,12 @@ export default function SettingsScreen({ navigation }) {
     setNotificationsEnabled(val);
   };
 
-  // On Android 12+ "alarms & reminders" exact timing is a separate permission;
-  // without it the system can defer prayer notifications by minutes (Doze).
-  const openExactAlarmSettings = async () => {
-    try {
-      await Linking.sendIntent('android.settings.REQUEST_SCHEDULE_EXACT_ALARM');
-    } catch {
-      try { await Linking.openSettings(); } catch {}
-    }
-  };
-
   const handleExport = async () => {
     try {
       const data = await storageBackend.exportData();
       Alert.alert('Success', 'Data exported successfully!');
     } catch (error) {
       Alert.alert('Error', 'Failed to export data');
-    }
-  };
-
-  const handleTestNotification = async () => {
-    try {
-      if (Platform.OS === 'web') {
-        if ('Notification' in window) {
-          if (Notification.permission !== 'granted') await Notification.requestPermission();
-          new window.Notification('صلاتي - اختبار', { body: '🕌 الإشعارات تعمل! ستظهر صلاة الفجر بعد 5 ثوان' });
-        }
-        // Also schedule via our util for 5 sec
-        const { schedulePrayerNotifications } = await import('../utils/notifications');
-        const future = new Date(Date.now() + 5000);
-        await schedulePrayerNotifications('اختبار', future, 0);
-        Alert.alert('تم', 'سيظهر إشعار اختبار خلال 5 ثوان');
-        return;
-      }
-      // Native: ensure channel and permission, then schedule 5s
-      const { status } = await Notifications.getPermissionsAsync();
-      if (status !== 'granted') {
-        const { status: newStatus } = await Notifications.requestPermissionsAsync();
-        if (newStatus !== 'granted') {
-          Alert.alert('خطأ', 'الرجاء السماح بالإشعارات من الإعدادات');
-          return;
-        }
-      }
-      await Notifications.scheduleNotificationAsync({
-        content: { title: 'صلاتي - اختبار', body: '🕌 الإشعارات تعمل! (5 ثوان)', sound: 'default', priority: Notifications.AndroidNotificationPriority.HIGH, data: { test: true } },
-        trigger: { type: 'date', date: new Date(Date.now() + 5000), channelId: 'prayer-times' },
-      });
-      Alert.alert('تم', 'سيظهر إشعار اختبار خلال 5 ثوان — اترك التطبيق في الخلفية');
-    } catch (e) {
-      Alert.alert('خطأ', String(e.message || e));
     }
   };
 
@@ -141,20 +96,20 @@ export default function SettingsScreen({ navigation }) {
           <View style={styles.settingRow}>
             <View>
               <Text style={styles.settingLabel}>تنبيهات الصلاة</Text>
-              <Text style={styles.settingDesc}>إشعارات قبل وأثناء وقت الصلاة</Text>
+              <Text style={styles.settingDesc}>تنبيه عند دخول كل صلاة</Text>
             </View>
             <Switch
               value={notificationsEnabled}
               onValueChange={handleToggleNotifications}
-              trackColor={{ false: '#1a1a1a', true: '#d4956a' }}
-              thumbColor={notificationsEnabled ? '#f0ece4' : '#8a857a'}
+              trackColor={{ false: C.surface, true: C.accent }}
+              thumbColor={notificationsEnabled ? C.text : C.textSecondary}
             />
           </View>
 
           <View style={styles.settingRow}>
             <View>
-              <Text style={styles.settingLabel}>تنبيه قبل الصلاة (دقائق)</Text>
-              <Text style={styles.settingDesc}>كم دقيقة قبل وقت الصلاة</Text>
+              <Text style={styles.settingLabel}>التذكير قبل الصلاة</Text>
+              <Text style={styles.settingDesc}>قبل الوقت بـ</Text>
             </View>
             <View style={styles.optionsRow}>
               {reminderOptions.map((min) => (
@@ -209,44 +164,28 @@ export default function SettingsScreen({ navigation }) {
 
           <View style={styles.settingRow}>
             <View>
-              <Text style={styles.settingLabel}>تذكير مستمر</Text>
-              <Text style={styles.settingDesc}>تنبيه كل 10 دقائق لمدة ساعة إذا لم تصلِّ</Text>
+              <Text style={styles.settingLabel}>إعادة التذكير</Text>
+              <Text style={styles.settingDesc}>كل 10 دقائق حتى تُصلَّى</Text>
             </View>
             <Switch
               value={recurringReminders}
               onValueChange={setRecurringReminders}
-              trackColor={{ false: '#1a1a1a', true: '#d4956a' }}
-              thumbColor={recurringReminders ? '#f0ece4' : '#8a857a'}
+              trackColor={{ false: C.surface, true: C.accent }}
+              thumbColor={recurringReminders ? C.text : C.textSecondary}
             />
           </View>
-
-          {Platform.OS === 'android' && Platform.Version >= 31 && (
-            <View style={styles.settingRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.settingLabel}>التنبيهات في وقتها</Text>
-                <Text style={styles.settingDesc}>اسمح بـ"المنبهات ومواعيد التذكيرات" للنظام حتى تصل التنبيهات في وقتها بالضبط</Text>
-              </View>
-              <TouchableOpacity style={styles.option} onPress={openExactAlarmSettings}>
-                <Text style={styles.optionText}>فتح</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#d4956a', marginTop: 16 }]} onPress={handleTestNotification}>
-            <Text style={[styles.actionButtonText, { color: '#0a0a0a' }]}>🔔 اختبار الإشعارات (5 ثوان)</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Streak Info Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>السلاسل (Streaks)</Text>
+          <Text style={styles.sectionTitle}>السلاسل</Text>
           
           <View style={styles.infoCard}>
             <Text style={styles.infoTitle}>كيف تعمل السلاسل؟</Text>
             <Text style={styles.infoText}>
-              • اضغط على "صليت" عند إتمام كل صلاة{'\n'}
-              • السلسلة تزيد كل يوم تحافظ على الصلاة{'\n'}
-              • إذا فاتك يوم، السلسلة تبدأ من جديد{'\n'}
-              • التذكيرات تتوقف عند إتمام الصلاة
+              • صلِّ كل صلاة في وقتها ثم اضغط "صليت"{'\n'}
+              • أكمل الصلوات الخمس في اليوم لتزيد سلسلة الأيام{'\n'}
+              • إذا فاتك يوم تعود السلسلة إلى الصفر
             </Text>
           </View>
         </View>
@@ -257,10 +196,6 @@ export default function SettingsScreen({ navigation }) {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>الإصدار</Text>
             <Text style={styles.infoValue}>1.0.0</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>محرك الحساب</Text>
-            <Text style={styles.infoValue}>Adhan العالمي</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>طريقة الحساب</Text>
@@ -295,10 +230,10 @@ export default function SettingsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (C) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: C.bg,
   },
   scrollView: {
     flex: 1,
@@ -315,7 +250,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   backText: {
-    color: '#d4956a',
+    color: C.accent,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -323,10 +258,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Amiri',
     fontSize: 20,
     fontWeight: '700',
-    color: '#f0ece4',
+    color: C.text,
   },
   section: {
-    backgroundColor: '#141414',
+    backgroundColor: C.elevated,
     marginHorizontal: 24,
     marginTop: 16,
     borderRadius: 12,
@@ -337,7 +272,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 2,
     textTransform: 'uppercase',
-    color: '#4a4740',
+    color: C.textMuted,
     marginBottom: 16,
   },
   settingRow: {
@@ -346,17 +281,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
+    borderBottomColor: C.surface,
     gap: 16,
   },
   settingLabel: {
     fontSize: 14,
-    color: '#f0ece4',
+    color: C.text,
     marginBottom: 2,
   },
   settingDesc: {
     fontSize: 11,
-    color: '#8a857a',
+    color: C.textSecondary,
   },
   optionsRow: {
     flexDirection: 'row',
@@ -366,46 +301,46 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: C.surface,
     minWidth: 36,
     alignItems: 'center',
   },
   optionActive: {
-    backgroundColor: '#d4956a',
+    backgroundColor: C.accent,
   },
   optionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#8a857a',
+    color: C.textSecondary,
   },
   optionTextActive: {
-    color: '#0a0a0a',
+    color: C.bg,
   },
   infoCard: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: C.surface,
     borderRadius: 8,
     padding: 12,
   },
   infoTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#d4956a',
+    color: C.accent,
     marginBottom: 8,
   },
   infoText: {
     fontSize: 12,
-    color: '#8a857a',
-    lineHeight: 2,
+    color: C.textSecondary,
+    lineHeight: 22,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
+    borderBottomColor: C.surface,
   },
   actionButton: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: C.surface,
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -414,16 +349,16 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#f0ece4',
+    color: C.text,
     textAlign: 'center',
   },
   infoLabel: {
     fontSize: 14,
-    color: '#8a857a',
+    color: C.textSecondary,
   },
   infoValue: {
     fontSize: 14,
-    color: '#f0ece4',
+    color: C.text,
     fontWeight: '600',
   },
   dangerButton: {

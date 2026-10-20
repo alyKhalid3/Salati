@@ -14,9 +14,12 @@ import { Svg, Path, Circle } from 'react-native-svg';
 import * as Location from 'expo-location';
 import { Platform } from 'react-native';
 import { CITIES } from '../utils/cities';
+import { usePrayer } from '../context/PrayerContext';
 import { resolveGpsLocation } from '../utils/prayerTimes';
 
-export default function LocationPicker({ visible, onClose, onSelect, currentLocation }) {
+function LocationPicker({ visible, onClose, onSelect, currentLocation }) {
+  const { C } = usePrayer();
+  const styles = React.useMemo(() => getStyles(C), [C]);
   const [query, setQuery] = useState('');
   const [gpsLoading, setGpsLoading] = useState(false);
 
@@ -51,7 +54,6 @@ export default function LocationPicker({ visible, onClose, onSelect, currentLoca
     }
     setGpsLoading(true);
     try {
-      const Location = await import('expo-location');
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') { setGpsLoading(false); return; }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
@@ -76,6 +78,7 @@ export default function LocationPicker({ visible, onClose, onSelect, currentLoca
       <View style={styles.overlay}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleClose} />
         <View style={styles.sheet}>
+          <View style={styles.handle} />
           <View style={styles.header}>
             <Text style={styles.headerTitle}>اختر موقعك</Text>
             <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
@@ -83,20 +86,20 @@ export default function LocationPicker({ visible, onClose, onSelect, currentLoca
             </TouchableOpacity>
           </View>
           <TouchableOpacity style={styles.gpsBtn} onPress={handleGps} disabled={gpsLoading} activeOpacity={0.8}>
-            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#d4956a" strokeWidth={2}>
+            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth={2}>
               <Circle cx={12} cy={12} r={10} /><Circle cx={12} cy={12} r={3} /><Path d="M12 2v2M12 20v2M2 12h2M20 12h2" />
             </Svg>
             <Text style={styles.gpsLabel}>{gpsLoading ? 'جاري تحديد موقعك...' : 'استخدم موقعي الحالي'}</Text>
             {!gpsLoading && <View style={styles.gpsBadge}><Text style={styles.gpsBadgeText}>GPS تلقائي</Text></View>}
-            {gpsLoading && <ActivityIndicator size="small" color="#d4956a" />}
+            {gpsLoading && <ActivityIndicator size="small" color={C.accent} />}
           </TouchableOpacity>
           <View style={styles.searchWrap}>
             <View style={styles.searchIcon}>
-              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#4a4740" strokeWidth={2}>
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.textMuted} strokeWidth={2}>
                 <Circle cx={11} cy={11} r={8} /><Path d="m21 21-4.35-4.35" />
               </Svg>
             </View>
-            <TextInput style={styles.searchInput} placeholder="ابحث عن مدينة..." placeholderTextColor="#4a4740" value={query} onChangeText={setQuery} textAlign="right" />
+            <TextInput style={styles.searchInput} placeholder="ابحث عن مدينة..." placeholderTextColor={C.textMuted} value={query} onChangeText={setQuery} textAlign="right" />
           </View>
           <ScrollView style={styles.list} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {filtered.length === 0 ? (
@@ -128,31 +131,34 @@ export default function LocationPicker({ visible, onClose, onSelect, currentLoca
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.65)' },
+const getStyles = (C) => StyleSheet.create({
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: C.scrim },
   backdrop: { ...StyleSheet.absoluteFillObject },
-  sheet: { backgroundColor: '#141414', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 28, maxHeight: '78%', gap: 14 },
+  sheet: { backgroundColor: C.elevated, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 28, maxHeight: '78%', gap: 14 },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginTop: -8 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', direction: 'rtl' },
-  headerTitle: { fontFamily: 'Amiri', fontSize: 17.6, fontWeight: '700', color: '#f0ece4', writingDirection: 'rtl' },
-  closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#1a1a1a', alignItems: 'center', justifyContent: 'center' },
-  closeText: { color: '#8a857a', fontSize: 14, fontWeight: '600' },
+  headerTitle: { fontFamily: 'Amiri', fontSize: 17.6, fontWeight: '700', color: C.text, writingDirection: 'rtl' },
+  closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
+  closeText: { color: C.textSecondary, fontSize: 14, fontWeight: '600' },
   gpsBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, width: '100%', paddingVertical: 14, paddingHorizontal: 16, backgroundColor: 'rgba(212,149,106,0.15)', borderWidth: 1, borderColor: 'rgba(212,149,106,0.25)', borderRadius: 12 },
-  gpsLabel: { flex: 1, fontFamily: 'Cairo', fontSize: 14, fontWeight: '600', color: '#f0ece4', textAlign: 'right', writingDirection: 'rtl' },
+  gpsLabel: { flex: 1, fontFamily: 'Cairo', fontSize: 14, fontWeight: '600', color: C.text, textAlign: 'right', writingDirection: 'rtl' },
   gpsBadge: { backgroundColor: 'rgba(212,149,106,0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
-  gpsBadgeText: { fontFamily: 'Cairo', fontSize: 10, color: '#d4956a', fontWeight: '600' },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 10, borderWidth: 1, borderColor: 'transparent', paddingHorizontal: 12, height: 44 },
+  gpsBadgeText: { fontFamily: 'Cairo', fontSize: 10, color: C.accent, fontWeight: '600' },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: 'transparent', paddingHorizontal: 12, height: 44 },
   searchIcon: { marginLeft: 8 },
-  searchInput: { flex: 1, fontFamily: 'Cairo', color: '#f0ece4', fontSize: 14, paddingVertical: 8, writingDirection: 'rtl' },
+  searchInput: { flex: 1, fontFamily: 'Cairo', color: C.text, fontSize: 14, paddingVertical: 8, writingDirection: 'rtl' },
   list: { maxHeight: 280 },
-  groupTitle: { fontFamily: 'Cairo', fontSize: 10.4, fontWeight: '700', letterSpacing: 1.5, color: '#4a4740', paddingTop: 10, paddingBottom: 6, textTransform: 'uppercase', textAlign: 'right', writingDirection: 'rtl' },
+  groupTitle: { fontFamily: 'Cairo', fontSize: 10.4, fontWeight: '700', letterSpacing: 1.5, color: C.textMuted, paddingTop: 10, paddingBottom: 6, textTransform: 'uppercase', textAlign: 'right', writingDirection: 'rtl' },
   cityItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' },
   cityItemActive: { backgroundColor: 'rgba(212,149,106,0.15)', borderColor: 'rgba(212,149,106,0.25)' },
   cityMain: { gap: 2, alignItems: 'flex-end', flex: 1, direction: 'rtl' },
-  cityName: { fontFamily: 'Cairo', fontSize: 14.4, fontWeight: '600', color: '#f0ece4', writingDirection: 'rtl', textAlign: 'right' },
-  cityCountry: { fontFamily: 'Cairo', fontSize: 11.2, color: '#8a857a', writingDirection: 'rtl', textAlign: 'right' },
-  check: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#d4956a', alignItems: 'center', justifyContent: 'center', opacity: 0, marginLeft: 12 },
+  cityName: { fontFamily: 'Cairo', fontSize: 14.4, fontWeight: '600', color: C.text, writingDirection: 'rtl', textAlign: 'right' },
+  cityCountry: { fontFamily: 'Cairo', fontSize: 11.2, color: C.textSecondary, writingDirection: 'rtl', textAlign: 'right' },
+  check: { width: 20, height: 20, borderRadius: 10, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', opacity: 0, marginLeft: 12 },
   checkActive: { opacity: 1 },
-  checkText: { color: '#0a0a0a', fontSize: 11, fontWeight: '700' },
-  emptyText: { textAlign: 'center', paddingVertical: 24, color: '#4a4740', fontSize: 14, fontFamily: 'Cairo' },
-  hint: { textAlign: 'center', fontSize: 10, color: '#4a4740', paddingTop: 4, fontFamily: 'Cairo' },
+  checkText: { color: C.bg, fontSize: 11, fontWeight: '700' },
+  emptyText: { textAlign: 'center', paddingVertical: 24, color: C.textMuted, fontSize: 14, fontFamily: 'Cairo' },
+  hint: { textAlign: 'center', fontSize: 10, color: C.textMuted, paddingTop: 4, fontFamily: 'Cairo' },
 });
+
+export default React.memo(LocationPicker);

@@ -37,4 +37,6 @@ export const CITIES = [
   { name: 'الخرطوم', country: 'السودان', lat: 15.5007, lng: 32.5599, method: 'Egyptian', timezone: 'Africa/Khartoum' },
   { name: 'لندن', country: 'بريطانيا', lat: 51.5072, lng: -0.1276, method: 'MuslimWorldLeague', timezone: 'Europe/London' },
   { name: 'باريس', country: 'فرنسا', lat: 48.8566, lng: 2.3522, method: 'MuslimWorldLeague', timezone: 'Europe/Paris' },
+  // North America - ISNA - America/New_York
+  { name: 'نيويورك', country: 'أمريكا', lat: 40.7128, lng: -74.0060, method: 'NorthAmerica', timezone: 'America/New_York' },
 ];

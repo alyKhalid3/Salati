@@ -11,4 +11,19 @@
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 
-# Add any project specific keep options here:
+# expo-notifications: reflection-heavy scheduling classes stripped by R8
+-keep class expo.modules.notifications.** { *; }
+-keep class expo.modules.core.** { *; }
+
+# AsyncStorage: uses reflection for its SQLite-backed adapter
+-keep class com.reactnativecommunity.asyncstorage.** { *; }
+
+#expo-location: serialized config objects
+-keep class expo.modules.location.** { *; }
+
+# gson / serialization used across expo internals
+-keep class com.google.gson.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+
+# Add any project specific keep options here.

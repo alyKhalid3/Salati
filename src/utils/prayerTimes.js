@@ -382,9 +382,66 @@ export const getCurrentPrayer = (prayerTimes, at) => {
   return 'isha';
 };
 
+// Living atmosphere: which sky phase is it right now? Ordered checks so
+// every minute of the day maps to exactly one phase (weather-app feel).
+// Keys match ATMOSPHERE in theme.js.
+export const getDayPhase = (prayerTimes, at) => {
+  const now = asValidDate(at || new Date());
+  const t = now.getTime();
+  const v = (d) => (d instanceof Date && !isNaN(d) ? d.getTime() : null);
+  const M = 60000;
+  const fajr = prayerTimes ? v(prayerTimes.fajr) : null;
+  const sr = prayerTimes ? v(prayerTimes.sunrise) : null;
+  const dh = prayerTimes ? v(prayerTimes.dhuhr) : null;
+  const mg = prayerTimes ? v(prayerTimes.maghrib) : null;
+  const ish = prayerTimes ? v(prayerTimes.isha) : null;
+  if (fajr == null || sr == null || dh == null || mg == null || ish == null) {
+    // Polar fallback: coarse clock phases in location terms.
+    const h = now.getHours() + now.getMinutes() / 60;
+    if (h >= 5 && h < 7) return { key: 'dawn', label: 'فجراً', icon: '🌅' };
+    if (h >= 7 && h < 11) return { key: 'morning', label: 'صباحاً', icon: '☀' };
+    if (h >= 11 && h < 15) return { key: 'noon', label: 'ظهراً', icon: '☀' };
+    if (h >= 15 && h < 17.5) return { key: 'afternoon', label: 'عصراً', icon: '🌤' };
+    if (h >= 17.5 && h < 19) return { key: 'sunset', label: 'غروباً', icon: '🌇' };
+    if (h >= 19 && h < 21) return { key: 'dusk', label: 'مساءً', icon: '🌆' };
+    return { key: 'night', label: 'ليلاً', icon: '🌙' };
+  }
+  if (t >= fajr && t < sr) return { key: 'dawn', label: 'فجراً', icon: '🌅' };
+  if (t >= mg - 40 * M && t <= mg + 40 * M) return { key: 'sunset', label: 'غروباً', icon: '🌇' };
+  if (t > mg + 40 * M && t < ish) return { key: 'dusk', label: 'مساءً', icon: '🌆' };
+  if (t >= ish || t < fajr) return { key: 'night', label: 'ليلاً', icon: '🌙' };
+  if (t >= dh - 30 * M && t < dh + 60 * M) return { key: 'noon', label: 'ظهراً', icon: '☀' };
+  if (t >= sr && t < dh - 30 * M) return { key: 'morning', label: 'صباحاً', icon: '☀' };
+  if (t >= dh + 60 * M && t < mg - 40 * M) return { key: 'afternoon', label: 'عصراً', icon: '🌤' };
+  // Any residual gap (extreme latitudes): split remaining daylight by fraction.
+  if (t >= sr && t < mg) {
+    const f = (t - sr) / (mg - sr);
+    if (f < 0.3) return { key: 'morning', label: 'صباحاً', icon: '☀' };
+    if (f < 0.6) return { key: 'noon', label: 'ظهراً', icon: '☀' };
+    return { key: 'afternoon', label: 'عصراً', icon: '🌤' };
+  }
+  return { key: 'night', label: 'ليلاً', icon: '🌙' };
+};
+
 export const getTimeUntil = (targetTime) => {
   if (!isValidDate(targetTime)) return 0;
   return targetTime.getTime() - new Date().getTime();
+};
+
+// Hijri date line (e.g. "٢٩ ربيع الأول ١٤٤٨ هـ"). Null when ICU lacks it.
+export const getHijriDate = (at, timezone) => {
+  try {
+    const date = asValidDate(at || new Date());
+    const opts = { day: 'numeric', month: 'long', year: 'numeric' };
+    if (isValidTimeZone(timezone)) opts.timeZone = timezone;
+    try {
+      return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', opts).format(date);
+    } catch {
+      return new Intl.DateTimeFormat('ar-SA-u-ca-islamic', opts).format(date);
+    }
+  } catch {
+    return null;
+  }
 };
 
 function getTargetClockParts(date, timezone) {
