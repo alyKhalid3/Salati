@@ -29,3 +29,5 @@ coverage/
 .hermes-tmp*
 android/app/src/main/assets/index.android.bundle
 android/app/src/main/res/drawable-*/node_modules_*
+*.apk
+/*.txt
