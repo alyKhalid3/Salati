@@ -43,7 +43,18 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
   const [showCongratulations, setShowCongratulations] = useState(false);
   const [location, setLocationState] = useState(initialLocation || null);
   const [madhab, setMadhabState] = useState('Shafi');
-  const [tickNow, setTickNow] = useState(() => new Date());
+  // DEV INSPECTION HOOK: ?time=HH:MM pins the app clock for visual QA (web dev
+  // builds only) — rows, plate and phase all agree on the same frozen time.
+  const devTimeRaw = typeof window !== 'undefined' && window.location ? new URLSearchParams(window.location.search).get('time') : null;
+  const pinnedNow = useMemo(() => {
+    if (!devTimeRaw) return null;
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(devTimeRaw));
+    if (!m) return null;
+    const d = new Date();
+    d.setHours(Math.min(23, parseInt(m[1], 10)), Math.min(59, parseInt(m[2], 10)), 0, 0);
+    return d;
+  }, [devTimeRaw]);
+  const [tickNow, setTickNow] = useState(() => pinnedNow || new Date());
   const [locationDateKey, setLocationDateKey] = useState(() => new Date().toDateString());
 
   // Sync prop changes (App.js GPS) into internal state
@@ -87,10 +98,10 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
 
   useEffect(() => {
     if (location) {
-      recomputeTimes(location, madhab);
+      recomputeTimes(location, madhab, pinnedNow || new Date());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location, madhab]);
+  }, [location, madhab, pinnedNow]);
 
   // Location-calendar day rollover and intraday next/current refresh. This uses
   // the selected location's calendar date, not necessarily the device date.
@@ -100,6 +111,8 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
   }, [locationDateKey]);
   useEffect(() => {
     if (!location) return undefined;
+    // Pinned clock (QA hook): no ticking needed — the app stays frozen at hh:mm.
+    if (pinnedNow) return undefined;
     const t = setInterval(() => {
       const now = new Date();
       setTickNow(now);
@@ -116,7 +129,7 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
     }, 15000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location, madhab, prayerTimes, tomorrowTimes]);
+  }, [location, madhab, prayerTimes, tomorrowTimes, pinnedNow]);
 
   const setLocation = async (newLoc) => {
     setLocationState(newLoc);
@@ -155,7 +168,7 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
   const isPrayerTimePassed = (prayerName) => {
     if (prayerName === 'sunrise') return false;
     if (!prayerTimes || !prayerTimes[prayerName]) return false;
-    return prayerTimes[prayerName] <= new Date();
+    return prayerTimes[prayerName] <= (pinnedNow || new Date());
   };
 
   const markAsPrayed = async (prayerName) => {
@@ -301,6 +314,11 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
   // Daylight theme follows the sun: bright while the sun is up at the
   // selected location, dark otherwise. Re-evaluated on the 15s tick.
   let isDaytime = true;
+  // DEV INSPECTION HOOK: ?day=0|1 forces the theme on web for visual QA.
+  // Remove the two lines below before shipping a release build.
+  const devDay = typeof window !== 'undefined' && window.location ? new URLSearchParams(window.location.search).get('day') : null;
+  if (devDay === '0' || devDay === '1') isDaytime = devDay === '1';
+  else
   try {
     const sr = prayerTimes && prayerTimes.sunrise;
     const mg = prayerTimes && prayerTimes.maghrib;
@@ -312,12 +330,25 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
   // bright ivory while the sun is up, dark after maghrib.
   const effectiveTheme = isDaytime ? 'light' : 'dark';
   const C = THEMES[effectiveTheme];
+
+  // Publish the active world for themeless modules (the toast fallback in
+  // notifications.js) — the web page's static ivory backdrop can't be sniffed.
+  useEffect(() => {
+    if (typeof window !== 'undefined') window.__salatiTheme = { dark: effectiveTheme === 'dark' };
+  }, [effectiveTheme]);
   // Living atmosphere for daylight mode (tinted hero glows + phase chip).
-  const phase = getDayPhase(prayerTimes, tickNow);
+  let phase = getDayPhase(prayerTimes, tickNow);
+  // DEV INSPECTION HOOK: ?phase=night|dawn|morning|noon|afternoon|sunset|dusk
+  // forces the atmosphere family on web for visual QA. Dev builds only.
+  const devPhase = typeof window !== 'undefined' && window.location ? new URLSearchParams(window.location.search).get('phase') : null;
+  const PHASE_LABELS = { night: 'ليلاً', dawn: 'فجراً', morning: 'صباحاً', noon: 'ظهراً', afternoon: 'عصراً', sunset: 'غروباً', dusk: 'شفعاً' };
+  if (devPhase && ATMOSPHERE[devPhase]) phase = { key: devPhase, label: PHASE_LABELS[devPhase] };
   const atmo = ATMOSPHERE[phase.key] || ATMOSPHERE.night;
 
   // Memoized value: without this, every per-second countdown tick creates a
   // new object and re-renders every consumer even when nothing changed.
+  const now = pinnedNow || tickNow;
+  const clockPinned = pinnedNow !== null;
   const value = useMemo(() => ({
       prayerTimes,
       tomorrowTimes,
@@ -337,6 +368,8 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
       C,
       phase,
       atmo,
+      now,
+      clockPinned,
       locationDateKey,
       showCongratulations,
       markAsPrayed,
@@ -347,7 +380,7 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
       isPrayerTimePassed,
       loadTodayData,
       hideCongratulations,
-  }), [prayerTimes, tomorrowTimes, nextPrayer, currentPrayer, prayedStatus, streaks, dailyStreak, bestDailyStreak, dailyLastDate, location, setLocation, madhab, setMadhab, isDaytime, effectiveTheme, C, phase, atmo, locationDateKey, showCongratulations, markAsPrayed, unmarkAsPrayed, togglePrayed, isPrayed, getPrayerStreak, isPrayerTimePassed, loadTodayData, hideCongratulations, reminderMinutes, recurringReminders, tickNow]);
+  }), [prayerTimes, tomorrowTimes, nextPrayer, currentPrayer, prayedStatus, streaks, dailyStreak, bestDailyStreak, dailyLastDate, location, setLocation, madhab, setMadhab, isDaytime, effectiveTheme, C, phase, atmo, now, clockPinned, locationDateKey, showCongratulations, markAsPrayed, unmarkAsPrayed, togglePrayed, isPrayed, getPrayerStreak, isPrayerTimePassed, loadTodayData, hideCongratulations, reminderMinutes, recurringReminders, tickNow]);
 
   return (
     <PrayerContext.Provider value={value}>

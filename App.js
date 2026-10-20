@@ -4,14 +4,15 @@ import React, { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { AppRegistry, Platform, Text, View, Animated, StyleSheet, Easing } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 
 import HomeScreen from './src/screens/HomeScreen';
-import BootLoader from './src/components/BootLoader';
+import TimesScreen from './src/screens/TimesScreen';
+import ProgressScreen from './src/screens/ProgressScreen';
+// (boot splash removed by design — home is the first screen)
+import TabBar from './src/components/TabBar';
 import { NotificationProvider } from './src/context/NotificationContext';
 import { PrayerProvider, usePrayer } from './src/context/PrayerContext';
 import { resolveGpsLocation } from './src/utils/prayerTimes';
@@ -21,7 +22,45 @@ import { storageBackend } from './src/utils/storage';
 SplashScreen.preventAutoHideAsync().catch(()=>{});
 const SettingsScreen = lazy(() => import('./src/screens/SettingsScreen'));
 
-const Stack = createNativeStackNavigator();
+// The four-page shell of the «المحراب» world: a custom bottom tab bar
+// flips between pages with a short crossfade — no navigation dependency
+// needed. RTL: home quotes the right edge first.
+function TabShell() {
+  const { C } = usePrayer();
+  const [page, setPage] = useState('home');
+  const [swap, setSwap] = useState(false); // true while the outgoing page fades
+  const [pending, setPending] = useState(null);
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  const changePage = (key) => {
+    if (key === page || swap) return;
+    setPending(key);
+    setSwap(true);
+    Animated.timing(opacity, { toValue: 0, duration: 150, easing: Easing.in(Easing.ease), useNativeDriver: true }).start(() => {
+      setPending(null);
+      setPage(key);
+      setSwap(false);
+      Animated.timing(opacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
+    });
+  };
+
+  const shown = pending || page;
+  return (
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <Animated.View style={{ flex: 1, opacity }}>
+        {shown === 'home' && <HomeScreen />}
+        {shown === 'times' && <TimesScreen />}
+        {shown === 'progress' && <ProgressScreen />}
+        {shown === 'settings' && (
+          <Suspense fallback={<View style={{ flex: 1, backgroundColor: C.bg }} />}>
+            <SettingsScreen />
+          </Suspense>
+        )}
+      </Animated.View>
+      <TabBar active={page} onChange={changePage} bottomInset={14} />
+    </View>
+  );
+}
 
 // Configure notification handler - show even when app is foregrounded
 Notifications.setNotificationHandler({
@@ -91,7 +130,6 @@ export default function App() {
     }
   };
   const [appReady, setAppReady] = useState(false);
-  const [bootMinDone, setBootMinDone] = useState(false);
 
   // Web: match index.html lang/dir + load Amiri/Cairo - batched to avoid forced reflow
   useEffect(() => {
@@ -106,8 +144,8 @@ export default function App() {
           html.lang = 'ar';
           html.dir = 'rtl';
           html.style.fontSize = '16px';
-          body.style.backgroundColor = '#0a0a0a';
-          body.style.color = '#f0ece4';
+          body.style.backgroundColor = '#f6f1e6';
+          body.style.color = '#22312b';
           body.style.fontFamily = "'Cairo', sans-serif";
           body.dir = 'rtl';
           if (!hasFontLink) {
@@ -119,7 +157,7 @@ export default function App() {
           if (root) {
             root.style.maxWidth = '420px';
             root.style.margin = '0 auto';
-            root.style.backgroundColor = '#0a0a0a';
+            root.style.backgroundColor = '#f6f1e6';
             root.style.minHeight = '100vh';
             root.style.position = 'relative';
             root.style.direction = 'rtl';
@@ -160,18 +198,14 @@ export default function App() {
       getLocation();
     }, 500);
     // Let the boot wordmark fill play out (~3s) before revealing home.
-    const minTime = setTimeout(() => setBootMinDone(true), 3200);
-    // Safety net: never leave the user on splash — fall back to Cairo.
     const fallback = setTimeout(() => {
       if (!resolvedRef.current) markResolved(CAIRO_FALLBACK);
     }, 2500);
-    return () => { clearTimeout(t); clearTimeout(minTime); clearTimeout(fallback); };
+    return () => { clearTimeout(t); clearTimeout(fallback); };
   }, []);
 
-  // Reveal home only when the location is in AND the boot fill has played.
-  // The native splash hides as soon as the location is in so the Salati
-  // fill loader (rendered underneath it) gets its moment before home.
-  const revealed = appReady && bootMinDone;
+  // No boot splash: home is the first thing you see; its own loading state
+  // covers the brief moment until the location (or the Cairo fallback) lands.
   useEffect(() => {
     if (locationReady && location) setAppReady(true);
   }, [locationReady, location]);
@@ -227,26 +261,9 @@ export default function App() {
     <SafeAreaProvider>
       <NotificationProvider>
         <PrayerProvider location={location}>
-          <NavigationContainer>
-            <ThemedStatusBar />
-            <ThemeFade />
-            {!revealed ? (
-              <BootLoader />
-            ) : (
-            <Suspense fallback={<View style={{ flex: 1, backgroundColor: '#0a0a0a' }} />}>
-              <Stack.Navigator
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: '#0a0a0a' },
-                  animation: 'slide_from_right',
-                }}
-              >
-                <Stack.Screen name="Home" component={HomeScreen} />
-                <Stack.Screen name="Settings" component={SettingsScreen} />
-              </Stack.Navigator>
-            </Suspense>
-            )}
-          </NavigationContainer>
+          <ThemedStatusBar />
+          <ThemeFade />
+          <TabShell />
         </PrayerProvider>
       </NotificationProvider>
     </SafeAreaProvider>

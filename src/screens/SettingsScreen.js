@@ -1,4 +1,6 @@
-// src/screens/SettingsScreen.js
+// src/screens/SettingsScreen.js — settings in the Soft Press world.
+// Sections are raised slabs; a selected option is PRESSED into its row;
+// destructive action keeps the soft coral. All copy via strings/tokens.
 import React from 'react';
 import {
   View,
@@ -6,16 +8,18 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotification } from '../context/NotificationContext';
 import { usePrayer } from '../context/PrayerContext';
 import { PRAYER_NAMES } from '../utils/prayerTimes';
+import { FONTS, RADII } from '../utils/theme';
+import { toArabicDigits } from '../utils/strings';
+import Toggle from '../components/Toggle';
 import { storageBackend } from '../utils/storage';
 
-export default function SettingsScreen({ navigation }) {
+export default function SettingsScreen() {
   const {
     notificationsEnabled,
     setNotificationsEnabled,
@@ -53,25 +57,25 @@ export default function SettingsScreen({ navigation }) {
 
   const handleExport = async () => {
     try {
-      const data = await storageBackend.exportData();
-      Alert.alert('Success', 'Data exported successfully!');
+      await storageBackend.exportData();
+      Alert.alert('تم', 'تم تصدير البيانات بنجاح');
     } catch (error) {
-      Alert.alert('Error', 'Failed to export data');
+      Alert.alert('خطأ', 'تعذّر تصدير البيانات');
     }
   };
 
   const handleClearData = () => {
     Alert.alert(
-      'Clear All Data',
-      'Are you sure? This will delete all prayer history, streaks, and settings.',
+      'مسح كل البيانات',
+      'هل أنت متأكد؟ سيُحذف سجل الصلوات والسلاسل والإعدادات.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'إلغاء', style: 'cancel' },
         {
-          text: 'Clear',
+          text: 'محو',
           style: 'destructive',
           onPress: async () => {
             await storageBackend.clearAll();
-            Alert.alert('Success', 'All data cleared');
+            Alert.alert('تم', 'تم مسح كل البيانات');
           },
         },
       ]
@@ -80,30 +84,22 @@ export default function SettingsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 132 }}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backText}>← رجوع</Text>
-          </TouchableOpacity>
           <Text style={styles.title}>الإعدادات</Text>
         </View>
 
         {/* Notifications Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>التنبيهات</Text>
-          
+
           <View style={styles.settingRow}>
             <View>
               <Text style={styles.settingLabel}>تنبيهات الصلاة</Text>
               <Text style={styles.settingDesc}>تنبيه عند دخول كل صلاة</Text>
             </View>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={handleToggleNotifications}
-              trackColor={{ false: C.surface, true: C.accent }}
-              thumbColor={notificationsEnabled ? C.text : C.textSecondary}
-            />
+            <Toggle value={notificationsEnabled} onValueChange={handleToggleNotifications} accessibilityLabel="تنبيهات الصلاة" />
           </View>
 
           <View style={styles.settingRow}>
@@ -127,7 +123,7 @@ export default function SettingsScreen({ navigation }) {
                       reminderMinutes === min && styles.optionTextActive,
                     ]}
                   >
-                    {min}
+                    {toArabicDigits(min)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -165,21 +161,16 @@ export default function SettingsScreen({ navigation }) {
           <View style={styles.settingRow}>
             <View>
               <Text style={styles.settingLabel}>إعادة التذكير</Text>
-              <Text style={styles.settingDesc}>كل 10 دقائق حتى تُصلَّى</Text>
+              <Text style={styles.settingDesc}>كل ١٠ دقائق حتى تُصلَّى</Text>
             </View>
-            <Switch
-              value={recurringReminders}
-              onValueChange={setRecurringReminders}
-              trackColor={{ false: C.surface, true: C.accent }}
-              thumbColor={recurringReminders ? C.text : C.textSecondary}
-            />
+            <Toggle value={recurringReminders} onValueChange={setRecurringReminders} accessibilityLabel="إعادة التذكير" />
           </View>
         </View>
 
         {/* Streak Info Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>السلاسل</Text>
-          
+
           <View style={styles.infoCard}>
             <Text style={styles.infoTitle}>كيف تعمل السلاسل؟</Text>
             <Text style={styles.infoText}>
@@ -239,134 +230,161 @@ const getStyles = (C) => StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 16,
-    gap: 16,
-  },
-  backButton: {
-    paddingVertical: 8,
-  },
-  backText: {
-    color: C.accent,
-    fontSize: 14,
-    fontWeight: '600',
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   title: {
-    fontFamily: 'Amiri',
-    fontSize: 20,
+    fontFamily: FONTS.arabic,
+    fontSize: 26,
     fontWeight: '700',
     color: C.text,
+    writingDirection: 'rtl',
   },
   section: {
-    backgroundColor: C.elevated,
-    marginHorizontal: 24,
+    backgroundColor: C.surface,
+    marginHorizontal: 20,
     marginTop: 16,
-    borderRadius: 12,
+    borderRadius: RADII.lg,
+    borderWidth: 1,
+    borderColor: C.goldFaint,
     padding: 16,
+    boxShadow: C.raiseSm,
   },
   sectionTitle: {
+    fontFamily: 'Cairo',
     fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
     color: C.textMuted,
     marginBottom: 16,
+    writingDirection: 'rtl',
   },
   settingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: C.surface,
     gap: 16,
+    direction: 'rtl',
   },
   settingLabel: {
+    fontFamily: 'Cairo',
     fontSize: 14,
     color: C.text,
     marginBottom: 2,
+    writingDirection: 'rtl',
   },
   settingDesc: {
+    fontFamily: 'Cairo',
     fontSize: 11,
     color: C.textSecondary,
+    writingDirection: 'rtl',
   },
   optionsRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
+    direction: 'rtl',
   },
   option: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: C.surface,
-    minWidth: 36,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: RADII.sm,
+    backgroundColor: C.bg,
+    borderWidth: 1,
+    borderColor: C.hairline,
+    minWidth: 44,
+    minHeight: 34,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   optionActive: {
-    backgroundColor: C.accent,
+    backgroundColor: C.green,
+    borderColor: C.accentGold,
   },
   optionText: {
-    fontSize: 12,
+    fontFamily: 'Cairo',
+    fontSize: 12.4,
     fontWeight: '600',
     color: C.textSecondary,
   },
   optionTextActive: {
-    color: C.bg,
+    color: C.onGreen,
+    fontWeight: '700',
   },
   infoCard: {
-    backgroundColor: C.surface,
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: C.surface2,
+    borderRadius: RADII.sm,
+    borderWidth: 1,
+    borderColor: C.hairlineSoft,
+    padding: 14,
   },
   infoTitle: {
+    fontFamily: 'Cairo',
     fontSize: 13,
     fontWeight: '700',
     color: C.accent,
     marginBottom: 8,
+    writingDirection: 'rtl',
   },
   infoText: {
+    fontFamily: 'Cairo',
     fontSize: 12,
     color: C.textSecondary,
     lineHeight: 22,
+    writingDirection: 'rtl',
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: C.surface,
+    alignItems: 'center',
+    paddingVertical: 11,
+    direction: 'rtl',
   },
   actionButton: {
     backgroundColor: C.surface,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: RADII.md,
+    borderWidth: 1,
+    borderColor: C.hairlineSoft,
     marginTop: 12,
   },
   actionButtonText: {
+    fontFamily: 'Cairo',
     fontSize: 14,
     fontWeight: '600',
     color: C.text,
     textAlign: 'center',
+    writingDirection: 'rtl',
   },
   infoLabel: {
+    fontFamily: 'Cairo',
     fontSize: 14,
     color: C.textSecondary,
+    writingDirection: 'rtl',
   },
   infoValue: {
+    fontFamily: 'Cairo',
     fontSize: 14,
     color: C.text,
     fontWeight: '600',
+    writingDirection: 'rtl',
   },
   dangerButton: {
-    backgroundColor: 'rgba(255, 100, 100, 0.1)',
-    borderColor: 'rgba(255, 100, 100, 0.3)',
-    borderWidth: 1,
+    backgroundColor: C.bg,
   },
   dangerText: {
-    color: '#ff6464',
+    color: C.danger,
+  },
+  footer: {
+    paddingVertical: 28,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontFamily: 'Cairo',
+    fontSize: 11,
+    color: C.textMuted,
+    letterSpacing: 1,
+    writingDirection: 'rtl',
   },
 });

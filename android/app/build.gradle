@@ -88,24 +88,12 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace 'com.salati.app'
-    // One lean APK per CPU instead of a fat universal: arm64 for modern
-    // phones, armv7 for old 2GB devices, x86_64 for the emulator.
-    splits {
-        abi {
-            enable true
-            reset()
-            include 'armeabi-v7a', 'arm64-v8a', 'x86_64'
-            universalApk false
-        }
-    }
     defaultConfig {
         applicationId 'com.salati.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
-        // Keep only Arabic + English string resources from libraries.
-        resConfigs "en", "ar"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }

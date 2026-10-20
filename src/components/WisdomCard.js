@@ -1,8 +1,12 @@
-// src/components/WisdomCard.js - web .wisdom
+// src/components/WisdomCard.js — the verse slab.
+// «المحراب» world: the Quran line rests on an ivory slab framed by a gold
+// khatam rule, set in Amiri — the one face calligraphy belongs to.
 import React from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
-import { Svg, Path } from 'react-native-svg';
 import { usePrayer } from '../context/PrayerContext';
+import OrnamentRule from '../components/OrnamentRule';
+import { FONTS, RADII } from '../utils/theme';
+import { toArabicDigits } from '../utils/strings';
 
 function WisdomCard({ message }) {
   const { C } = usePrayer();
@@ -12,8 +16,8 @@ function WisdomCard({ message }) {
 
   React.useEffect(() => {
     const entrance = Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 600, delay: 700, useNativeDriver: true }),
-      Animated.timing(translateAnim, { toValue: 0, duration: 600, delay: 700, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 420, delay: 320, useNativeDriver: true }),
+      Animated.timing(translateAnim, { toValue: 0, duration: 420, delay: 320, useNativeDriver: true }),
     ]);
     entrance.start();
     return () => entrance.stop();
@@ -21,101 +25,51 @@ function WisdomCard({ message }) {
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: translateAnim }] }]}>
-      <View style={styles.header}>
-        <View style={styles.icon}>
-          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth={1.5}>
-            <Path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-            <Path d="m9 12 2 2 4-4" />
-          </Svg>
-        </View>
-        <Text style={styles.label}>حكمة اليوم</Text>
+      <OrnamentRule width={230} />
+      <View style={styles.slab}>
+        <Text style={styles.verse}>﴿ {message.text} ﴾</Text>
+        <Text style={styles.source}>{toArabicDigits(message.source)}</Text>
       </View>
-      <View style={styles.card}>
-        <View style={styles.accentBar} />
-        <Text style={styles.ornament}>﴿</Text>
-        <Text style={styles.text}>{message.text}</Text>
-        <Text style={styles.ornament}>﴾</Text>
-        <Text style={styles.source}>{message.source}</Text>
-      </View>
+      <OrnamentRule width={230} />
     </Animated.View>
   );
 }
 
 const getStyles = (C) => StyleSheet.create({
   container: {
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    backgroundColor: C.bg,
+    alignItems: 'center',
+    paddingTop: 26,
+    paddingBottom: 8,
     direction: 'rtl',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-    direction: 'rtl',
-  },
-  icon: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    backgroundColor: 'rgba(212, 149, 106, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  label: {
-    fontFamily: 'Cairo',
-    fontSize: 10.4,
-    fontWeight: '700',
-    letterSpacing: 3,
-    textTransform: 'uppercase',
-    color: C.textMuted,
-    writingDirection: 'rtl',
-  },
-  card: {
+  slab: {
     backgroundColor: C.surface,
-    borderRadius: 16,
-    padding: 32,
-    overflow: 'hidden',
-    position: 'relative',
-    direction: 'rtl',
+    borderRadius: RADII.lg,
     borderWidth: 1,
-    borderColor: `rgba(${C.paper}, 0.06)`,
-    borderTopColor: `rgba(${C.paper}, 0.13)`,
+    borderColor: C.goldFaint,
+    paddingVertical: 22,
+    paddingHorizontal: 22,
+    marginTop: 14,
+    marginBottom: 14,
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    boxShadow: C.raiseSm,
+    direction: 'rtl',
   },
-  accentBar: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 3,
-    height: '100%',
-    backgroundColor: C.accent,
-  },
-  ornament: {
-    fontFamily: 'Amiri',
-    fontSize: 26,
-    color: C.accent,
-    opacity: 0.85,
-    textAlign: 'center',
-    lineHeight: 30,
-    writingDirection: 'rtl',
-  },
-  text: {
-    fontFamily: 'Amiri',
-    fontSize: 17.6,
-    lineHeight: 35.2,
+  verse: {
+    fontFamily: FONTS.arabic,
+    fontSize: 18,
+    lineHeight: 36,
     color: C.text,
-    marginBottom: 16,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: 'center',
   },
   source: {
-    fontFamily: 'Cairo',
-    fontSize: 11.2,
-    color: C.textMuted,
-    letterSpacing: 1,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    fontFamily: FONTS.sans,
+    fontSize: 10.8,
+    color: C.accentGold,
+    textAlign: 'center',
+    marginTop: 10,
   },
 });
 

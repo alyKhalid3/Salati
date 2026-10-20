@@ -21,7 +21,7 @@ async function ensureChannel() {
   if (Platform.OS !== 'android' || channelReady) return;
   try {
     await Notifications.setNotificationChannelAsync('prayer-times', {
-      name: 'Prayer Times',
+      name: 'أوقات الصلاة',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [200, 100, 200],
       sound: 'default',
@@ -30,6 +30,36 @@ async function ensureChannel() {
     });
     channelReady = true;
   } catch {}
+}
+
+// The toast wears the active world's card law exactly — same recipe as the
+// home banner card: radius 16 (RADII.lg), surface fill, gold hairline, the
+// theme's `raise` shadow, Cairo type. Each fire re-reads the page's own
+// background so the toast follows the sun (ivory parchment vs night green).
+function toastCard() {
+  // Prefer the truth from the running app (PrayerContext publishes it).
+  let dark = typeof window !== 'undefined' && window.__salatiTheme ? window.__salatiTheme.dark : undefined;
+  if (dark === undefined) {
+    // Guest path: fall back to sampling the page canvas. Skip transparent
+    // layers explicitly — rgba(0,0,0,0) is not a dark world.
+    dark = true;
+    try {
+      const probes = [document.querySelector('#root > div'), document.getElementById('root'), document.body];
+      for (const el of probes) {
+        if (!el) continue;
+        const rgba = getComputedStyle(el).backgroundColor || '';
+        const m = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+        if (!m) continue;
+        if (m[4] !== undefined && Number(m[4]) < 0.1) continue; // transparent layer — keep looking
+        const lum = 0.299 * Number(m[1]) + 0.587 * Number(m[2]) + 0.114 * Number(m[3]);
+        dark = lum < 120;
+        break;
+      }
+    } catch {}
+  }
+  return dark
+    ? { bg: '#122018', border: 'rgba(217, 184, 105, 0.16)', title: '#eadfc6', body: '#a8b5a8', shadow: '0px 10px 26px 0px rgba(0, 0, 0, 0.45), 0px 3px 8px 0px rgba(0, 0, 0, 0.3)' }
+    : { bg: '#fbf7ed', border: 'rgba(201, 162, 83, 0.18)', title: '#22312b', body: '#5b6a61', shadow: '0px 10px 24px 0px rgba(26, 46, 38, 0.10), 0px 3px 8px 0px rgba(26, 46, 38, 0.07)' };
 }
 
 function showWebNotification(title, body, tag) {
@@ -50,14 +80,29 @@ function showWebNotification(title, body, tag) {
   // Fallback: in-app toast + vibrate
   try { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([200,100,200]); } catch {}
   if (typeof document !== 'undefined') {
+    const T = toastCard();
     let el = document.getElementById('inAppToast');
     if (!el) {
       el = document.createElement('div');
       el.id = 'inAppToast';
-      el.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid #d4956a;color:#f0ece4;padding:12px 20px;border-radius:12px;z-index:300;max-width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.5);font-family:Cairo,sans-serif;';
       document.body.appendChild(el);
     }
-    el.textContent = msg;
+    el.dir = 'rtl';
+    el.style.cssText = [
+      'position:fixed', 'top:16px', 'left:50%', 'transform:translateX(-50%)',
+      `background:${T.bg}`, `border:1px solid ${T.border}`, 'border-radius:16px',
+      'padding:12px 16px', 'z-index:300', 'max-width:min(90%, 420px)', 'text-align:center',
+      `box-shadow:${T.shadow}`, 'font-family:Cairo,sans-serif', 'overflow:hidden',
+    ].join(';');
+    el.textContent = '';
+    const t = document.createElement('div');
+    t.style.cssText = `font-size:13px;font-weight:700;color:${T.title};direction:rtl;`;
+    t.textContent = title;
+    const b = document.createElement('div');
+    b.style.cssText = `font-size:12.5px;color:${T.body};direction:rtl;`;
+    b.textContent = msg;
+    el.appendChild(t);
+    el.appendChild(b);
     el.style.display = 'block';
     el.style.opacity = '1';
     clearTimeout(el._hideTimer);

@@ -1,8 +1,13 @@
-// src/components/CongratulationsModal.js - web .congrats-modal exact
+// src/components/CongratulationsModal.js — the soft celebration.
+// World: a raised slab pops over the dimmed ground; pastel beads (one per
+// prayer window) fall softly; the tally presses up in Cairo. Animations
+// preserved from the incumbent build.
 import React, { useMemo, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated, Easing } from 'react-native';
 import Svg, { Path, Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { usePrayer } from '../context/PrayerContext';
+import { GLAZES } from '../utils/theme';
+import { toArabicDigits } from '../utils/strings';
 
 const MESSAGES = [
   "مَا شَاءَ اللَّهُ! لَكَ الْمَدْحُ وَالشُّكْرُ يَا عَبْدَ اللَّهِ",
@@ -17,16 +22,18 @@ const MESSAGES = [
   "إِسْتَمِرُّ عَلَى هَذِهِ الْحَالِ فَإِنَّ اللَّهَ مَعَ الصَّابِرِينَ",
 ];
 
+// Soft beads — one per prayer window, cycled.
+const GLAZE_COLORS = [GLAZES.fajr.ink, GLAZES.dhuhr.ink, GLAZES.asr.ink, GLAZES.maghrib.ink, GLAZES.isha.ink, GLAZES.sunrise.ink];
 const PARTICLES = [
-  { left: '10%', color: '#d4956a', delay: 0, size: 10 },
-  { left: '20%', color: '#f0d060', delay: 300, size: 6 },
-  { left: '30%', color: '#d4956a', delay: 600, size: 8 },
-  { left: '40%', color: '#e8a070', delay: 900, size: 10 },
-  { left: '50%', color: '#f0d060', delay: 1200, size: 6 },
-  { left: '60%', color: '#d4956a', delay: 200, size: 8 },
-  { left: '70%', color: '#e8a070', delay: 500, size: 10 },
-  { left: '80%', color: '#f0d060', delay: 800, size: 6 },
-  { left: '90%', color: '#d4956a', delay: 1100, size: 8 },
+  { left: '10%', color: GLAZE_COLORS[0], delay: 0, size: 10 },
+  { left: '20%', color: GLAZE_COLORS[1], delay: 300, size: 6 },
+  { left: '30%', color: GLAZE_COLORS[2], delay: 600, size: 8 },
+  { left: '40%', color: GLAZE_COLORS[3], delay: 900, size: 10 },
+  { left: '50%', color: GLAZE_COLORS[4], delay: 1200, size: 6 },
+  { left: '60%', color: GLAZE_COLORS[5], delay: 200, size: 8 },
+  { left: '70%', color: GLAZE_COLORS[3], delay: 500, size: 10 },
+  { left: '80%', color: GLAZE_COLORS[1], delay: 800, size: 6 },
+  { left: '90%', color: GLAZE_COLORS[0], delay: 1100, size: 8 },
 ];
 
 function CongratulationsModal({ visible, dailyStreak, onClose }) {
@@ -68,22 +75,20 @@ function CongratulationsModal({ visible, dailyStreak, onClose }) {
         ])
       );
       glow.start();
-      // Stop on unmount/hide: orphaned native nodes race the native animated
-      // manager on reload (connect/disconnectAnimatedNodes crashes).
       return () => { pop.stop(); bounce.stop(); glow.stop(); };
-    } else {
-      overlayOpacity.setValue(0);
-      scale.setValue(0.5);
-      rotate.setValue(0);
-      iconBounce.setValue(0);
-      countScale.setValue(0.5);
-      countOpacity.setValue(0);
     }
+    overlayOpacity.setValue(0);
+    scale.setValue(0.5);
+    rotate.setValue(0);
+    iconBounce.setValue(0);
+    countScale.setValue(0.5);
+    countOpacity.setValue(0);
+    return undefined;
   }, [visible]);
 
   const rotateInterpolate = rotate.interpolate({
     inputRange: [0, 0.5, 1],
-    outputRange: ['-5deg', '2deg', '0deg'],
+    outputRange: ['-3deg', '1.5deg', '0deg'],
   });
 
   return (
@@ -101,7 +106,7 @@ function CongratulationsModal({ visible, dailyStreak, onClose }) {
               <Svg width={150} height={150} viewBox="0 0 150 150">
                 <Defs>
                   <RadialGradient id="congratsGlow" cx="50%" cy="50%" r="50%">
-                    <Stop offset="0%" stopColor={C.accent} stopOpacity={0.35} />
+                    <Stop offset="0%" stopColor={C.accent} stopOpacity={0.30} />
                     <Stop offset="100%" stopColor={C.accent} stopOpacity={0} />
                   </RadialGradient>
                 </Defs>
@@ -109,10 +114,8 @@ function CongratulationsModal({ visible, dailyStreak, onClose }) {
               </Svg>
             </Animated.View>
             <Animated.View style={[styles.medallion, { transform: [{ translateY: iconBounce }] }]}>
-              <View style={styles.medallionRing} />
-              <Svg width={60} height={60} viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth={1.4}>
-                <Path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-                <Path d="M18.2 3.5l.8 1.7 1.9.3-1.4 1.3.4 1.9-1.7-.9-1.7.9.4-1.9-1.4-1.3 1.9-.3z" fill={C.accentGold} stroke="none" />
+              <Svg width={58} height={58} viewBox="0 0 24 24" fill="none" stroke={C.accentGold} strokeWidth={1.5}>
+                <Path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </Animated.View>
           </View>
@@ -120,11 +123,11 @@ function CongratulationsModal({ visible, dailyStreak, onClose }) {
           <Text style={styles.subtitle}>لقد أكملت جميع الصلوات اليوم</Text>
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerDiamond}>◆</Text>
+            <View style={styles.dividerGlaze} />
             <View style={styles.dividerLine} />
           </View>
           <View style={styles.daysContainer}>
-            <Animated.Text style={[styles.daysNumber, { opacity: countOpacity, transform: [{ scale: countScale }] }]}>{dailyStreak}</Animated.Text>
+            <Animated.Text style={[styles.daysNumber, { opacity: countOpacity, transform: [{ scale: countScale }] }]}>{toArabicDigits(dailyStreak)}</Animated.Text>
             <Text style={styles.daysLabel}>أيام متتالية</Text>
           </View>
           <Text style={styles.message}>{message}</Text>
@@ -147,7 +150,7 @@ function Particle({ left, color, delay, size, visible }) {
       translateY.setValue(-100);
       rotate.setValue(0);
       opacity.setValue(1);
-      return;
+      return undefined;
     }
     const loop = Animated.loop(
       Animated.parallel([
@@ -193,75 +196,56 @@ const getStyles = (C) => StyleSheet.create({
   },
   content: {
     backgroundColor: C.surface,
-    borderRadius: 32,
-    paddingVertical: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: C.goldFaint,
+    paddingVertical: 30,
     paddingHorizontal: 32,
     alignItems: 'center',
     width: 360,
     maxWidth: '92%',
-    borderWidth: 2,
-    borderColor: C.accent,
-    overflow: 'hidden',
-    shadowColor: C.accent,
-    shadowOpacity: 0.3,
-    shadowRadius: 40,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 12,
+    boxShadow: C.raise,
+    overflow: 'visible',
   },
-  particles: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
-  medallionWrap: { alignItems: 'center', justifyContent: 'center', marginBottom: 8, zIndex: 1 },
+  particles: { ...StyleSheet.absoluteFillObject, overflow: 'hidden', borderRadius: 16 },
+  medallionWrap: { alignItems: 'center', justifyContent: 'center', marginBottom: 10, zIndex: 1 },
   medallionGlow: { position: 'absolute' },
   medallion: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: C.surface,
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: C.green,
     borderWidth: 1,
-    borderColor: C.accent,
-    borderTopColor: C.accentGold,
+    borderColor: C.accentGold,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: C.accent,
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 8,
   },
-  medallionRing: {
-    position: 'absolute',
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    borderWidth: 1,
-    borderColor: C.hairlineSoft,
-  },
-  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 16, zIndex: 1, direction: 'rtl' },
-  dividerLine: { width: 56, height: 1, backgroundColor: C.hairlineSoft },
-  dividerDiamond: { fontSize: 8, color: C.accent, textAlign: 'center' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 14, zIndex: 1, direction: 'rtl' },
+  dividerLine: { width: 56, height: 1, backgroundColor: C.goldFaint },
+  dividerGlaze: { width: 7, height: 7, borderRadius: 1.5, backgroundColor: C.accentGold, transform: [{ rotate: '45deg' }] },
   title: {
-    fontFamily: 'Amiri',
-    fontSize: 32,
+    fontFamily: 'Cairo',
+    fontSize: 28,
     fontWeight: '700',
-    color: C.accent,
-    marginBottom: 8,
+    color: C.text,
+    marginBottom: 6,
     textAlign: 'center',
     writingDirection: 'rtl',
     zIndex: 1,
   },
-  subtitle: { fontFamily: 'Cairo', fontSize: 15.2, color: C.textSecondary, marginBottom: 24, textAlign: 'center', writingDirection: 'rtl', zIndex: 1 },
+  subtitle: { fontFamily: 'Cairo', fontSize: 14.6, color: C.textSecondary, marginBottom: 18, textAlign: 'center', writingDirection: 'rtl', zIndex: 1 },
   daysContainer: {
     alignItems: 'center',
     marginBottom: 4,
     zIndex: 1,
   },
-  daysNumber: { fontFamily: 'Cairo', fontSize: 72, fontWeight: '700', color: C.accent, lineHeight: 72, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  daysLabel: { fontFamily: 'Cairo', fontSize: 13.6, color: C.textSecondary, marginTop: 8, fontWeight: '600', writingDirection: 'rtl', textAlign: 'center' },
-  message: { fontFamily: 'Amiri', fontSize: 16, lineHeight: 32, color: C.textSecondary, textAlign: 'center', writingDirection: 'rtl', marginVertical: 20, paddingHorizontal: 8, zIndex: 1 },
-  closeButton: { backgroundColor: C.accent, paddingHorizontal: 48, paddingVertical: 16, borderRadius: 16, zIndex: 1 },
-  closeButtonText: { fontFamily: 'Cairo', color: C.bg, fontSize: 16, fontWeight: '700', writingDirection: 'rtl', textAlign: 'center' },
+  daysNumber: { fontFamily: 'Cairo', fontSize: 64, fontWeight: '700', color: C.accentGold, lineHeight: 74, textAlign: 'center' },
+  daysLabel: { fontFamily: 'Cairo', fontSize: 13.2, color: C.textSecondary, marginTop: 4, fontWeight: '600', writingDirection: 'rtl', textAlign: 'center' },
+  message: { fontFamily: 'Cairo', fontSize: 14.6, lineHeight: 30, color: C.textSecondary, textAlign: 'center', writingDirection: 'rtl', marginVertical: 18, paddingHorizontal: 8, zIndex: 1 },
+  closeButton: { backgroundColor: C.green, borderWidth: 1, borderColor: C.accentGold, paddingHorizontal: 44, paddingVertical: 14, borderRadius: 14, zIndex: 1 },
+  closeButtonText: { fontFamily: 'Cairo', color: C.onGreen, fontSize: 15.4, fontWeight: '700', writingDirection: 'rtl', textAlign: 'center' },
 });
 
-// Static: Particle shape never changes with theme (color comes via props).
 const particleStyles = StyleSheet.create({
   particle: { position: 'absolute', width: 10, height: 10, borderRadius: 5, top: 0 },
 });

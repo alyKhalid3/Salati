@@ -6,11 +6,6 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0a0a0a"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -23,7 +18,7 @@
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0a0a0a"
+        "backgroundColor": "#f6f1e6"
       },
       "package": "com.salati.app",
       "versionCode": 1,
@@ -44,14 +39,21 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
-          "color": "#0a0a0a",
+          "icon": "./assets/notification-icon.png",
+          "color": "#0f5d43",
           "sounds": [],
           "useNextNotificationsApi": true
         }
       ],
       "expo-location",
-      "expo-splash-screen"
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#f6f1e6"
+        }
+      ]
     ],
     "extra": {
       "eas": {

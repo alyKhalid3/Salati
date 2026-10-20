@@ -1,106 +1,169 @@
-// src/utils/theme.js - shared premium design tokens
-// Monochrome + single copper accent. Extend here, never hardcode elsewhere.
-export const COLORS = {
-  bg: '#0a0a0a',
-  elevated: '#141414',
-  surface: '#1a1a1a',
-  surfaceHover: '#222222',
-  accent: '#d4956a',
-  accentDeep: '#8a5a33',
-  accentGold: '#f0d060',
-  accentDim: 'rgba(212, 149, 106, 0.15)',
-  accentFaint: 'rgba(212, 149, 106, 0.08)',
-  accentGlow: 'rgba(212, 149, 106, 0.10)',
-  hairline: 'rgba(212, 149, 106, 0.16)',
-  hairlineSoft: 'rgba(240, 236, 228, 0.07)',
-  text: '#f0ece4',
-  textSecondary: '#8a857a',
-  textMuted: '#4a4740',
+// src/utils/theme.js — the «المحراب» world law.
+//
+// DIRECTION CONTRACT (every component reads from here; screens never hardcode):
+// THESIS: a prayer app that feels like a houkh of a mosque in Zakho —
+// ivory parchment pages, deep mosque-green slabs crowned by the mihrab
+// arch, gold hairline frames and a small khatam ornament unit as the one
+// repeating motif. Color lives in narrow bands: green structure, gold
+// legibility, and each prayer window's pigment as an accent.
+// MATERIAL LAW: cards are smooth ivory paper with a single soft drop
+// shadow; the green slabs and gold frames carry the identity.
+// RADIUS LAW: cards 16, keys 12–14, the hero arch = full dome (radius
+// clamped to width half) with a gold finial.
+
+// Page pigments — one Islamic pigment per prayer window. `ink` = the dot
+// and the band fill; `washDay`/`washNight` = an active-row face tint;
+// `aura` = the sun-marker fill on the sun-path plate.
+export const GLAZES = {
+  fajr:    { label: 'فجر',   ink: '#6f9fb8', washDay: '#e2ecf1', washNight: '#18262e', aura: '#9fc6da' },
+  sunrise: { label: 'شروق',  ink: '#b08c3f', washDay: '#f2ead2', washNight: '#2c2515', aura: '#dbb968' },
+  dhuhr:   { label: 'ظهر',   ink: '#3f6db4', washDay: '#dde6f2', washNight: '#1b2840', aura: '#7f9fd1' },
+  asr:     { label: 'عصر',   ink: '#5f9276', washDay: '#ddecdd', washNight: '#192821', aura: '#8ab797' },
+  maghrib: { label: 'مغرب',  ink: '#c96f4e', washDay: '#f0ddce', washNight: '#31201a', aura: '#e69e7e' },
+  isha:    { label: 'عشاء',  ink: '#8a6fb4', washDay: '#e6ddf2', washNight: '#221d33', aura: '#b097d7' },
+};
+
+// Structure rules.
+export const RULES = {
+  hairline: 1,          // the only true line weight
+  archFrameInset: 5,    // gold inner frame offset inside the green slab
+  band: 7,              // progress band height
+};
+
+// Radii law — 16 for slabs/cards, 12–14 for keys.
+export const RADII = { sm: 12, md: 14, lg: 16, xl: 18 };
+
+// The daylight page — ivory parchment, mosque-green, gold.
+// Keep token names stable; components consume C.* only.
+const LIGHT = {
+  bg: '#f6f1e6',
+  surface: '#fbf7ed',
+  panel: '#fbf7ed',
+  elevated: '#fbf7ed',
+  surface2: '#efe8d8',
+
+  text: '#22312b',
+  textSecondary: '#5b6a61',
+  textMuted: '#93a19a',
+
+  // The mosque-green: structure, hero slab, filled key.
+  green: '#0f5d43',
+  greenDeep: '#0a4a36',
+  greenLift: '#14775a',   // pressed/lift tumm of green
+  onGreen: '#f3ecdc',
+  onGreenMuted: '#c8d4c9',
+
+  accent: '#0f5d43',
+  accentDim: 'rgba(15, 93, 67, 0.14)',
+  accentGlow: 'rgba(15, 93, 67, 0.28)',
+  accentFaint: 'rgba(15, 93, 67, 0.09)',
+
+  accentGold: '#c9a253',
+  goldBright: '#e0bd72',
+  goldFaint: 'rgba(201, 162, 83, 0.18)',
+
+  danger: '#c0503a',
+  scrim: 'rgba(24, 34, 29, 0.42)',
+  scrimStrong: 'rgba(14, 22, 18, 0.62)',
+  hairline: 'rgba(34, 49, 43, 0.16)',
+  hairlineSoft: 'rgba(34, 49, 43, 0.08)',
+
+  // Elevation: one soft ambient drop (multiple on the hero arch).
+  raise: '0px 10px 24px 0px rgba(26, 46, 38, 0.10), 0px 3px 8px 0px rgba(26, 46, 38, 0.07)',
+  raiseSm: '0px 5px 14px 0px rgba(26, 46, 38, 0.10)',
+  press: 'none',
+  pressSm: 'none',
+  groove: 'inset 0px 1px 3px 0px rgba(26, 46, 38, 0.14)',
+  shadow: '#16352a',
+  shadowLight: '#ffffff',
+  shadowDark: 'rgba(26, 46, 38, 0.55)',
+};
+
+// The night page — the mosque under a low lamp: green-lamp dark, warm.
+const DARK = {
+  bg: '#0d1713',
+  surface: '#122018',
+  panel: '#122018',
+  elevated: '#14231b',
+  surface2: '#1b2c22',
+
+  text: '#eadfc6',
+  textSecondary: '#a8b5a8',
+  textMuted: '#6f7f74',
+
+  green: '#124b3a',
+  greenDeep: '#0d3a2d',
+  greenLift: '#19624c',
+  onGreen: '#eee6d2',
+  onGreenMuted: '#9fb5a6',
+
+  accent: '#8fc3a8',
+  accentDim: 'rgba(84, 140, 116, 0.16)',
+  accentGlow: 'rgba(84, 140, 116, 0.3)',
+  accentFaint: 'rgba(84, 140, 116, 0.1)',
+
+  accentGold: '#d9b869',
+  goldBright: '#e8c97e',
+  goldFaint: 'rgba(217, 184, 105, 0.16)',
+
+  danger: '#d46a52',
+  scrim: 'rgba(4, 10, 8, 0.5)',
+  scrimStrong: 'rgba(2, 6, 5, 0.7)',
+  hairline: 'rgba(234, 223, 198, 0.15)',
+  hairlineSoft: 'rgba(234, 223, 198, 0.07)',
+
+  raise: '0px 10px 26px 0px rgba(0, 0, 0, 0.45), 0px 3px 8px 0px rgba(0, 0, 0, 0.3)',
+  raiseSm: '0px 5px 14px 0px rgba(0, 0, 0, 0.38)',
+  press: 'none',
+  pressSm: 'none',
+  groove: 'inset 0px 1px 3px 0px rgba(0, 0, 0, 0.4)',
+  shadow: '#050806',
+  shadowLight: '#1d2e25',
+  shadowDark: 'rgba(0, 0, 0, 0.7)',
+};
+
+export const COLORS = { ...LIGHT };
+
+export const THEMES = { dark: DARK, light: LIGHT };
+
+// Atmosphere per sun phase — same keys getDayPhase() returns.
+// The hero slab stays GREEN; the phase shows in the chip dot, the window
+// ring, and the band fill. `tint` = a whisper of the window's pigment in
+// the arch crown ornament. `tintNight` for dark firings.
+export const ATMOSPHERE = {
+  night:     { glow: '#12352a', core: '#12513f', auraA: '#0f2c22', auraB: '#12352a', tint: '#2c2515', tintNight: '#2c2515', o: 1.0 },
+  dawn:      { glow: '#6f9fb8', core: '#9fc6da', auraA: '#8fc2d6', auraB: '#6f9fb8', tint: '#6f9fb8', tintNight: '#1d2e38', o: 1.0 },
+  morning:   { glow: '#b08c3f', core: '#dbb968', auraA: '#cbab5c', auraB: '#b08c3f', tint: '#b08c3f', tintNight: '#2e2918', o: 1.0 },
+  noon:      { glow: '#3f6db4', core: '#7f9fd1', auraA: '#6f92c6', auraB: '#3f6db4', tint: '#3f6db4', tintNight: '#1b2840', o: 1.0 },
+  afternoon: { glow: '#5f9276', core: '#8ab797', auraA: '#7caa8a', auraB: '#5f9276', tint: '#5f9276', tintNight: '#192821', o: 1.0 },
+  sunset:    { glow: '#c96f4e', core: '#e69e7e', auraA: '#dd8f6f', auraB: '#c96f4e', tint: '#c96f4e', tintNight: '#31201a', o: 1.0 },
+  dusk:      { glow: '#8a6fb4', core: '#b097d7', auraA: '#9f87c8', auraB: '#8a6fb4', tint: '#8a6fb4', tintNight: '#221d33', o: 1.0 },
 };
 
 export const FONTS = {
-  arabic: 'Amiri',
-  sans: 'Cairo',
+  sans: 'Cairo',   // interface face — labels, body, digits
+  arabic: 'Amiri', // display: prayer names, verse, the wordmark
 };
 
-export const RADII = {
-  sm: 4,
-  md: 8,
-  lg: 16,
-  xl: 24,
+// Type steps.
+export const TYPE = {
+  hero: 44,     // countdown digits (fixed-width boxes 34/18 proven)
+  display: 38,  // prayer name (Amiri)
+  prayer: 19,   // row title
+  label: 12,
+  micro: 10.5,
 };
 
+// Method names on panels.
 export const METHOD_LABELS = {
-  Egyptian: 'الهيئة المصرية للمساحة',
+  Egyptian: 'الهيئة المصرية العامة للمساحة',
   MuslimWorldLeague: 'رابطة العالم الإسلامي',
-  UmmAlQura: 'أم القرى',
-  NorthAmerica: 'أمريكا الشمالية',
-  Turkey: 'تركيا',
+  UmmAlQura: 'جامعة أم القرى (مكة)',
+  NorthAmerica: 'رابطة أمريكا الشمالية (ISNA)',
+  Turkey: 'الديانة التركية',
   Tehran: 'طهران',
   Karachi: 'كراتشي',
   Singapore: 'سنغافورة',
   Qatar: 'قطر',
   Kuwait: 'الكويت',
-};
-
-// Full dark tokens (current look). Every themed component reads these
-// through context as `C` — never hardcode a color in a component.
-export const DARK = {
-  ...COLORS,
-  surface2: '#101010',
-  panel: '#050505',
-  panelBorder: 'rgba(240,236,228,0.10)',
-  border: '#2e2e2e',
-  accentSoft: '#e8b07e',
-  iconBg: '#1e1a14',
-  paper: '240, 236, 228',
-  scrim: 'rgba(0,0,0,0.65)',
-  scrimStrong: 'rgba(0, 0, 0, 0.9)',
-  textShadow: 'rgba(0, 0, 0, 0.85)',
-  shadow: '#000',
-};
-
-// Daylight palette: warm ivory, same copper accent (deepened for contrast).
-// Clean and minimal — restraint is the design.
-export const LIGHT = {
-  bg: '#f3eee1',
-  elevated: '#faf6ec',
-  surface: '#ffffff',
-  surfaceHover: '#ece4cf',
-  surface2: '#e9e0c9',
-  panel: '#fffdf6',
-  panelBorder: 'rgba(120, 95, 50, 0.18)',
-  accent: '#b57a3e',
-  accentDeep: '#8a5a33',
-  accentGold: '#c1912a',
-  accentSoft: '#8a5a33',
-  accentDim: 'rgba(181, 122, 62, 0.14)',
-  accentFaint: 'rgba(181, 122, 62, 0.07)',
-  accentGlow: 'rgba(181, 122, 62, 0.12)',
-  hairline: 'rgba(181, 122, 62, 0.35)',
-  hairlineSoft: 'rgba(33, 27, 18, 0.08)',
-  iconBg: '#efe6d2',
-  border: '#ddd2b6',
-  paper: '33, 27, 18',
-  scrim: 'rgba(30,25,15,0.45)',
-  scrimStrong: 'rgba(30, 25, 15, 0.85)',
-  text: '#221b11',
-  textSecondary: '#7c7060',
-  textMuted: '#b5a88d',
-  textShadow: 'rgba(120, 90, 40, 0.25)',
-  shadow: 'rgba(120, 95, 50, 0.35)',
-};
-
-export const THEMES = { dark: DARK, light: LIGHT };
-
-// Living atmosphere: tinted hero glows per sun phase (daylight mode).
-// Same copper family, shifted with the sky — restraint, not rainbow.
-export const ATMOSPHERE = {
-  night:    { glow: '#d4956a', core: '#f0d060', auraA: '#d4956a', auraB: '#f0d060', o: 1.0 },
-  dawn:     { glow: '#c98a7a', core: '#e0a060', auraA: '#9a6a9a', auraB: '#e0a060', o: 1.5 },
-  morning:  { glow: '#d8a050', core: '#f0d060', auraA: '#d8a050', auraB: '#f0c060', o: 1.4 },
-  noon:     { glow: '#e8b840', core: '#f5d060', auraA: '#e8b840', auraB: '#f5d060', o: 1.6 },
-  afternoon:{ glow: '#d08a3e', core: '#e8a840', auraA: '#d08a3e', auraB: '#e8a840', o: 1.4 },
-  sunset:   { glow: '#d04a2a', core: '#e09040', auraA: '#903050', auraB: '#e09040', o: 1.9 },
-  dusk:     { glow: '#7a6ab0', core: '#b08090', auraA: '#7a6ab0', auraB: '#d4956a', o: 1.6 },
 };

@@ -15,6 +15,7 @@ import * as Location from 'expo-location';
 import { Platform } from 'react-native';
 import { CITIES } from '../utils/cities';
 import { usePrayer } from '../context/PrayerContext';
+import { RADII } from '../utils/theme';
 import { resolveGpsLocation } from '../utils/prayerTimes';
 
 function LocationPicker({ visible, onClose, onSelect, currentLocation }) {
@@ -113,7 +114,7 @@ function LocationPicker({ visible, onClose, onSelect, currentLocation }) {
                     return (
                       <TouchableOpacity key={`${city.name}-${city.country}`} style={[styles.cityItem, isActive && styles.cityItemActive]} onPress={() => handleCityPress(city)} activeOpacity={0.7}>
                         <View style={styles.cityMain}>
-                          <Text style={styles.cityName}>{city.name}</Text>
+                          <Text style={[styles.cityName, isActive && styles.cityNameActive]}>{city.name}</Text>
                           <Text style={styles.cityCountry}>{city.country}</Text>
                         </View>
                         <View style={[styles.check, isActive && styles.checkActive]}><Text style={styles.checkText}>✓</Text></View>
@@ -134,31 +135,32 @@ function LocationPicker({ visible, onClose, onSelect, currentLocation }) {
 const getStyles = (C) => StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: C.scrim },
   backdrop: { ...StyleSheet.absoluteFillObject },
-  sheet: { backgroundColor: C.elevated, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 28, maxHeight: '78%', gap: 14 },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginTop: -8 },
+  sheet: { backgroundColor: C.bg, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, paddingBottom: 28, maxHeight: '78%', gap: 14, boxShadow: C.raise },
+  handle: { width: 40, height: 5, borderRadius: 2.5, backgroundColor: C.surface2, alignSelf: 'center', marginTop: -8 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', direction: 'rtl' },
-  headerTitle: { fontFamily: 'Amiri', fontSize: 17.6, fontWeight: '700', color: C.text, writingDirection: 'rtl' },
-  closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontFamily: 'Cairo', fontSize: 17, fontWeight: '700', color: C.text, writingDirection: 'rtl' },
+  closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: C.bg, boxShadow: C.raiseSm, alignItems: 'center', justifyContent: 'center' },
   closeText: { color: C.textSecondary, fontSize: 14, fontWeight: '600' },
-  gpsBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, width: '100%', paddingVertical: 14, paddingHorizontal: 16, backgroundColor: 'rgba(212,149,106,0.15)', borderWidth: 1, borderColor: 'rgba(212,149,106,0.25)', borderRadius: 12 },
+  gpsBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, width: '100%', paddingVertical: 13, paddingHorizontal: 16, backgroundColor: C.bg, boxShadow: C.raiseSm, borderRadius: RADII.md },
   gpsLabel: { flex: 1, fontFamily: 'Cairo', fontSize: 14, fontWeight: '600', color: C.text, textAlign: 'right', writingDirection: 'rtl' },
-  gpsBadge: { backgroundColor: 'rgba(212,149,106,0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  gpsBadge: { backgroundColor: C.accentFaint, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
   gpsBadgeText: { fontFamily: 'Cairo', fontSize: 10, color: C.accent, fontWeight: '600' },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: 'transparent', paddingHorizontal: 12, height: 44 },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.bg, borderRadius: RADII.sm, boxShadow: C.groove, paddingHorizontal: 12, height: 44 },
   searchIcon: { marginLeft: 8 },
   searchInput: { flex: 1, fontFamily: 'Cairo', color: C.text, fontSize: 14, paddingVertical: 8, writingDirection: 'rtl' },
   list: { maxHeight: 280 },
   groupTitle: { fontFamily: 'Cairo', fontSize: 10.4, fontWeight: '700', letterSpacing: 1.5, color: C.textMuted, paddingTop: 10, paddingBottom: 6, textTransform: 'uppercase', textAlign: 'right', writingDirection: 'rtl' },
-  cityItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' },
-  cityItemActive: { backgroundColor: 'rgba(212,149,106,0.15)', borderColor: 'rgba(212,149,106,0.25)' },
+  cityItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 11, paddingHorizontal: 12, borderRadius: RADII.sm },
+  cityItemActive: { backgroundColor: C.accentFaint, borderWidth: 1, borderColor: C.goldFaint },
   cityMain: { gap: 2, alignItems: 'flex-end', flex: 1, direction: 'rtl' },
   cityName: { fontFamily: 'Cairo', fontSize: 14.4, fontWeight: '600', color: C.text, writingDirection: 'rtl', textAlign: 'right' },
+  cityNameActive: { color: C.accent, fontWeight: '700' },
   cityCountry: { fontFamily: 'Cairo', fontSize: 11.2, color: C.textSecondary, writingDirection: 'rtl', textAlign: 'right' },
   check: { width: 20, height: 20, borderRadius: 10, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', opacity: 0, marginLeft: 12 },
   checkActive: { opacity: 1 },
-  checkText: { color: C.bg, fontSize: 11, fontWeight: '700' },
-  emptyText: { textAlign: 'center', paddingVertical: 24, color: C.textMuted, fontSize: 14, fontFamily: 'Cairo' },
-  hint: { textAlign: 'center', fontSize: 10, color: C.textMuted, paddingTop: 4, fontFamily: 'Cairo' },
+  checkText: { color: C.onGreen, fontSize: 11, fontWeight: '700' },
+  emptyText: { textAlign: 'center', paddingVertical: 24, color: C.textMuted, fontSize: 14, fontFamily: 'Cairo', writingDirection: 'rtl' },
+  hint: { textAlign: 'center', fontSize: 10, color: C.textMuted, paddingTop: 4, fontFamily: 'Cairo', writingDirection: 'rtl' },
 });
 
 export default React.memo(LocationPicker);

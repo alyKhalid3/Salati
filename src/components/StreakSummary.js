@@ -1,8 +1,12 @@
-// src/components/StreakSummary.js - web .streak-summary
+// src/components/StreakSummary.js — the tally slab.
+// «المحراب» world: a gold-framed ivory slab carrying three Cairo tallies;
+// the last seven days as small keys — filled gold = kept, ring = missed,
+// and today wears the gold crown.
 import React from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
-import { Svg, Path } from 'react-native-svg';
 import { usePrayer } from '../context/PrayerContext';
+import { FONTS, RADII } from '../utils/theme';
+import { S, toArabicDigits } from '../utils/strings';
 
 function StreakSummary({ streaks, dailyStreak, bestDailyStreak }) {
   const { C, prayedStatus, locationDateKey } = usePrayer();
@@ -12,8 +16,8 @@ function StreakSummary({ streaks, dailyStreak, bestDailyStreak }) {
 
   React.useEffect(() => {
     const entrance = Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 600, delay: 350, useNativeDriver: true }),
-      Animated.timing(translateAnim, { toValue: 0, duration: 600, delay: 350, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 380, delay: 180, useNativeDriver: true }),
+      Animated.timing(translateAnim, { toValue: 0, duration: 380, delay: 180, useNativeDriver: true }),
     ]);
     entrance.start();
     return () => entrance.stop();
@@ -51,37 +55,26 @@ function StreakSummary({ streaks, dailyStreak, bestDailyStreak }) {
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: translateAnim }] }]}>
-      <View style={styles.header}>
-        <View style={styles.icon}>
-          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth={1.5}>
-            <Path d="M12 2L2 7l10 5 10-5-10-5z" />
-            <Path d="M2 17l10 5 10-5" />
-            <Path d="M2 12l10 5 10-5" />
-          </Svg>
-        </View>
-        <Text style={styles.title}>سلسلة الصلوات</Text>
-      </View>
-
       <View style={styles.statsRow}>
         <View style={styles.stat}>
-          <Text style={styles.statNumber}>{totalStreak}</Text>
-          <Text style={styles.statLabel}>إجمالي سلاسل الصلوات</Text>
+          <Text style={styles.statNumber}>{toArabicDigits(totalStreak)}</Text>
+          <Text style={styles.statLabel}>{S.streakTotal}</Text>
         </View>
         <View style={styles.divider} />
         <View style={styles.stat}>
-          <Text style={styles.statNumber}>{dailyStreak}</Text>
-          <Text style={styles.statLabel}>سلسلة الأيام</Text>
+          <Text style={[styles.statNumber, styles.statNumberToday]}>{toArabicDigits(dailyStreak)}</Text>
+          <Text style={styles.statLabel}>{S.streakDaily}</Text>
         </View>
         <View style={styles.divider} />
         <View style={styles.stat}>
-          <Text style={styles.statNumber}>{bestStreak}</Text>
-          <Text style={styles.statLabel}>أفضل سلسلة أيام</Text>
+          <Text style={styles.statNumber}>{toArabicDigits(bestStreak)}</Text>
+          <Text style={styles.statLabel}>{S.streakBest}</Text>
         </View>
       </View>
 
       {week.length > 0 && (
         <View style={styles.weekRow}>
-          <Text style={styles.weekLabel}>آخر ٧ أيام</Text>
+          <Text style={styles.weekLabel}>{toArabicDigits(7)} {S.streakUnit} · سجل الأيام</Text>
           <View style={styles.weekDots}>
             {week.map((done, i) => (
               <View
@@ -102,43 +95,14 @@ function StreakSummary({ streaks, dailyStreak, bestDailyStreak }) {
 
 const getStyles = (C) => StyleSheet.create({
   container: {
-    backgroundColor: C.surface2,
-    marginHorizontal: 24,
-    borderRadius: 16,
-    padding: 24,
-    direction: 'rtl',
+    backgroundColor: C.surface,
+    marginTop: 8,
+    borderRadius: RADII.lg,
     borderWidth: 1,
-    borderColor: 'rgba(212, 149, 106, 0.22)',
-    borderTopColor: 'rgba(240, 208, 160, 0.40)',
-    shadowColor: C.accent,
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 4,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
+    borderColor: C.goldFaint,
+    padding: 20,
     direction: 'rtl',
-  },
-  icon: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    backgroundColor: 'rgba(212, 149, 106, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontFamily: 'Cairo',
-    fontSize: 10.4,
-    fontWeight: '700',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    color: C.textMuted,
-    writingDirection: 'rtl',
+    boxShadow: C.raiseSm,
   },
   statsRow: {
     flexDirection: 'row',
@@ -148,44 +112,41 @@ const getStyles = (C) => StyleSheet.create({
   stat: {
     flex: 1,
     alignItems: 'center',
+    gap: 3,
   },
   statNumber: {
-    fontFamily: 'Cairo',
-    fontSize: 27,
+    fontFamily: FONTS.arabic,
+    fontSize: 32,
     fontWeight: '700',
-    color: C.accent,
+    color: C.text,
     textAlign: 'center',
-    textShadowColor: 'rgba(212, 149, 106, 0.30)',
-    textShadowRadius: 12,
   },
+  statNumberToday: { color: C.accentGold },
   statLabel: {
-    fontFamily: 'Cairo',
+    fontFamily: FONTS.sans,
     fontSize: 10.4,
     color: C.textSecondary,
-    marginTop: 4,
     textAlign: 'center',
-    writingDirection: 'rtl',
   },
   divider: {
     width: 1,
     height: 32,
-    backgroundColor: C.surface,
+    backgroundColor: C.hairlineSoft,
   },
   weekRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 18,
-    paddingTop: 16,
+    marginTop: 16,
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: `rgba(${C.paper}, 0.06)`,
+    borderTopColor: C.hairlineSoft,
     direction: 'rtl',
   },
   weekLabel: {
-    fontFamily: 'Cairo',
+    fontFamily: FONTS.sans,
     fontSize: 10.5,
     color: C.textSecondary,
-    writingDirection: 'rtl',
   },
   weekDots: {
     flexDirection: 'row',
@@ -197,22 +158,19 @@ const getStyles = (C) => StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    borderWidth: 1,
   },
   weekDotDone: {
-    backgroundColor: C.accent,
-    borderColor: C.accent,
-    shadowColor: C.accent,
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 0 },
+    backgroundColor: C.accentGold,
+    borderWidth: 0,
   },
   weekDotEmpty: {
     backgroundColor: 'transparent',
-    borderColor: C.border,
+    borderWidth: 1,
+    borderColor: C.hairline,
   },
   weekDotToday: {
-    borderColor: C.text,
+    borderColor: C.accentGold,
+    borderWidth: 1.6,
   },
 });
 

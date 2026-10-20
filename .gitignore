@@ -27,6 +27,7 @@ coverage/
 /*.bundle
 *.tmp
 .hermes-tmp*
+.impeccable/
 android/app/src/main/assets/index.android.bundle
 android/app/src/main/res/drawable-*/node_modules_*
 *.apk
