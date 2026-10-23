@@ -3,7 +3,7 @@
 // prayer window) fall softly; the tally presses up in Cairo. Animations
 // preserved from the incumbent build.
 import React, { useMemo, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, BackHandler } from 'react-native';
 import Svg, { Path, Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { usePrayer } from '../context/PrayerContext';
 import { GLAZES } from '../utils/theme';
@@ -39,8 +39,10 @@ const PARTICLES = [
 function CongratulationsModal({ visible, dailyStreak, onClose }) {
   const { C } = usePrayer();
   const styles = React.useMemo(() => getStyles(C), [C]);
-  const overlayOpacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.5)).current;
+  const overlayOpacity = useRef(new Animated.Value(1)).current;
+  const scale = useRef(new Animated.Value(0.92)).current;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const rotate = useRef(new Animated.Value(0)).current;
   const iconBounce = useRef(new Animated.Value(0)).current;
   const glowOpacity = useRef(new Animated.Value(0.3)).current;
@@ -50,40 +52,46 @@ function CongratulationsModal({ visible, dailyStreak, onClose }) {
   const message = useMemo(() => MESSAGES[Math.floor(Math.random() * MESSAGES.length)], [visible]);
 
   useEffect(() => {
-    if (visible) {
-      const pop = Animated.parallel([
-        Animated.timing(overlayOpacity, { toValue: 1, duration: 400, easing: Easing.ease, useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 1, duration: 500, delay: 50, easing: Easing.bezier(0.175, 0.885, 0.32, 1.275), useNativeDriver: true }),
-        Animated.timing(rotate, { toValue: 1, duration: 500, delay: 50, easing: Easing.bezier(0.175, 0.885, 0.32, 1.275), useNativeDriver: true }),
-        Animated.timing(countScale, { toValue: 1, duration: 500, delay: 300, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-        Animated.timing(countOpacity, { toValue: 1, duration: 500, delay: 300, useNativeDriver: true }),
-      ]);
-      pop.start();
-
-      const bounce = Animated.loop(
-        Animated.sequence([
-          Animated.timing(iconBounce, { toValue: -10, duration: 500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(iconBounce, { toValue: 0, duration: 500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        ])
-      );
-      bounce.start();
-
-      const glow = Animated.loop(
-        Animated.sequence([
-          Animated.timing(glowOpacity, { toValue: 0.8, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(glowOpacity, { toValue: 0.3, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        ])
-      );
-      glow.start();
-      return () => { pop.stop(); bounce.stop(); glow.stop(); };
+    if (!visible) {
+      scale.setValue(0.92);
+      rotate.setValue(0);
+      iconBounce.setValue(0);
+      countScale.setValue(0.5);
+      countOpacity.setValue(0);
+      return undefined;
     }
-    overlayOpacity.setValue(0);
-    scale.setValue(0.5);
+    const back = BackHandler.addEventListener('hardwareBackPress', () => {
+      onCloseRef.current();
+      return true;
+    });
+    scale.setValue(0.92);
     rotate.setValue(0);
-    iconBounce.setValue(0);
     countScale.setValue(0.5);
     countOpacity.setValue(0);
-    return undefined;
+    const pop = Animated.parallel([
+      Animated.timing(scale, { toValue: 1, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(rotate, { toValue: 1, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(countScale, { toValue: 1, duration: 420, delay: 120, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      Animated.timing(countOpacity, { toValue: 1, duration: 420, delay: 120, useNativeDriver: true }),
+    ]);
+    pop.start();
+
+    const bounce = Animated.loop(
+      Animated.sequence([
+        Animated.timing(iconBounce, { toValue: -10, duration: 500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(iconBounce, { toValue: 0, duration: 500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    );
+    bounce.start();
+
+    const glow = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowOpacity, { toValue: 0.8, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(glowOpacity, { toValue: 0.3, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    );
+    glow.start();
+    return () => { pop.stop(); bounce.stop(); glow.stop(); back.remove(); };
   }, [visible]);
 
   const rotateInterpolate = rotate.interpolate({
@@ -91,8 +99,10 @@ function CongratulationsModal({ visible, dailyStreak, onClose }) {
     outputRange: ['-3deg', '1.5deg', '0deg'],
   });
 
+  if (!visible) return null;
+
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <View style={styles.host} pointerEvents="auto">
       <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
         <Animated.View style={[styles.content, { transform: [{ scale }, { rotate: rotateInterpolate }] }]}>
           <View style={styles.particles} pointerEvents="none">
@@ -136,7 +146,7 @@ function CongratulationsModal({ visible, dailyStreak, onClose }) {
           </TouchableOpacity>
         </Animated.View>
       </Animated.View>
-    </Modal>
+    </View>
   );
 }
 
@@ -187,6 +197,7 @@ function Particle({ left, color, delay, size, visible }) {
 }
 
 const getStyles = (C) => StyleSheet.create({
+  host: { ...StyleSheet.absoluteFillObject, zIndex: 200, elevation: 200 },
   overlay: {
     flex: 1,
     backgroundColor: C.scrimStrong,

@@ -9,15 +9,19 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Platform,
+  Share,
 } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotification } from '../context/NotificationContext';
 import { usePrayer } from '../context/PrayerContext';
 import { PRAYER_NAMES } from '../utils/prayerTimes';
 import { FONTS, RADII } from '../utils/theme';
-import { toArabicDigits } from '../utils/strings';
+import { S, toArabicDigits } from '../utils/strings';
 import Toggle from '../components/Toggle';
 import { storageBackend } from '../utils/storage';
+import { cancelAllNotifications } from '../utils/notifications';
 
 export default function SettingsScreen() {
   const {
@@ -27,8 +31,9 @@ export default function SettingsScreen() {
     setReminderMinutes,
     recurringReminders,
     setRecurringReminders,
+    resetToDefaults,
   } = useNotification();
-  const { madhab, setMadhab, location, C } = usePrayer();
+  const { madhab, setMadhab, location, C, clearPrayerMemory } = usePrayer();
   const styles = React.useMemo(() => getStyles(C), [C]);
 
   const reminderOptions = [5, 10, 15, 30];
@@ -50,34 +55,105 @@ export default function SettingsScreen() {
     ? `${Number(location.latitude).toFixed(4)}، ${Number(location.longitude).toFixed(4)}`
     : '--';
 
-  const handleToggleNotifications = (val) => {
-    // Persists via NotificationContext; HomeScreen cancels/re-schedules on change
+  const handleToggleNotifications = async (val) => {
+    if (val && Platform.OS !== 'web') {
+      try {
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== 'granted') {
+          setNotificationsEnabled(false);
+          Alert.alert('التنبيهات', 'لم يُمنح إذن التنبيهات. فعّله من إعدادات الجهاز ثم أعد المحاولة.');
+          return;
+        }
+      } catch {
+        setNotificationsEnabled(false);
+        return;
+      }
+    } else if (val && typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') {
+          setNotificationsEnabled(false);
+          return;
+        }
+      } catch {
+        setNotificationsEnabled(false);
+        return;
+      }
+    }
     setNotificationsEnabled(val);
   };
 
   const handleExport = async () => {
     try {
-      await storageBackend.exportData();
-      Alert.alert('تم', 'تم تصدير البيانات بنجاح');
+      const data = await storageBackend.exportData();
+      const text = JSON.stringify(data, null, 2);
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        const blob = new Blob([text], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'shurooq-backup.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        return;
+      }
+      await Share.share({ message: text, title: S.appName });
     } catch (error) {
+      const message = error && error.message ? String(error.message) : '';
+      if (/cancel|dismiss|abort/i.test(message)) return;
       Alert.alert('خطأ', 'تعذّر تصدير البيانات');
     }
   };
 
+  const tell = (title, message) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.alert(`${title}\n${message}`);
+      return;
+    }
+    Alert.alert(title, message);
+  };
+
+  const wipeData = async () => {
+    const ok = await storageBackend.clearAll();
+    if (!ok) {
+      tell('خطأ', 'تعذّر مسح البيانات');
+      return;
+    }
+    clearPrayerMemory();
+    resetToDefaults();
+    await cancelAllNotifications();
+    // The city is not prayer history. Write it back so the next launch
+    // does not fall through to "never chosen" and start GPS again.
+    if (location) {
+      await storageBackend.saveSettings({
+        reminderMinutes: 10,
+        notificationsEnabled: true,
+        recurringReminders: true,
+        calculationMethod: location.method || 'Egyptian',
+        madhab: 'Shafi',
+        location,
+        theme: 'dark',
+        language: 'ar',
+      });
+    }
+    tell('تم', 'تم مسح كل البيانات');
+  };
+
   const handleClearData = () => {
+    const message = 'هل أنت متأكد؟ سيُحذف سجل الصلوات والسلاسل والإعدادات.';
+    // Alert.alert is a no-op on web (only ios and android are implemented).
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(message)) wipeData();
+      return;
+    }
     Alert.alert(
       'مسح كل البيانات',
-      'هل أنت متأكد؟ سيُحذف سجل الصلوات والسلاسل والإعدادات.',
+      message,
       [
         { text: 'إلغاء', style: 'cancel' },
-        {
-          text: 'محو',
-          style: 'destructive',
-          onPress: async () => {
-            await storageBackend.clearAll();
-            Alert.alert('تم', 'تم مسح كل البيانات');
-          },
-        },
+        { text: 'محو', style: 'destructive', onPress: wipeData },
       ]
     );
   };
@@ -203,7 +279,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>صلاتي — ليكن قلبك مع الله</Text>
+          <Text style={styles.footerText}>{S.footerLine}</Text>
         </View>
 
         {/* Data Management */}

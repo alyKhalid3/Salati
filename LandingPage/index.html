@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>شروق | يومك كله على قوس واحد</title>
+<meta name="description" content="شروق تطبيق مواقيت صلاة بيوريك الصلاة الجاية وفاضل عليها قد إيه، ويومك من الفجر للعشاء على قوس واحد.">
+<meta name="theme-color" content="#0a0f0c">
+<meta property="og:title" content="شروق | يومك كله على قوس واحد">
+<meta property="og:description" content="الصلاة الجاية وفاضل عليها قد إيه، ويومك من الفجر للعشاء على قوس واحد.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M8 50C20 8 44 8 56 50' fill='none' stroke='%23d2ad63' stroke-width='6' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='22' r='7' fill='%23d2ad63'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0f0c; --band:#0e1611; --ink:#f1ead9; --muted:#9fb0a5; --line:#23342a;
+  --gold:#d2ad63; --forest:#0f5f45; --btn-ink:#0a0f0c;
+  --serif:"Amiri","Noto Naskh Arabic",serif; --sans:"Tajawal","Segoe UI",system-ui,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:light){
+  :root{--bg:#f4efe3; --band:#ebe4d1; --ink:#12281f; --muted:#4f6358; --line:#d6cbb2; --gold:#8a6a22; --btn-ink:#f7f2e6}
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:18px;line-height:1.85;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:3px;border-radius:8px}
+.wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;padding:20px 0}
+.brand{font-family:var(--serif);font-weight:700;font-size:32px;line-height:1;color:var(--gold);text-decoration:none}
+.pill{font-size:16px;font-weight:500;text-decoration:none;border:1px solid var(--line);padding:6px 18px;border-radius:999px}
+.pill:hover{border-color:var(--gold)}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding:40px 0 88px}
+h1{font-family:var(--serif);font-weight:700;font-size:clamp(46px,7vw,80px);line-height:1.2;margin:0 0 22px;max-width:11ch}
+.lead{font-size:clamp(18px,2.2vw,22px);color:var(--muted);max-width:30em;margin:0 0 34px}
+.cta{display:inline-block;background:var(--gold);color:var(--btn-ink);font-weight:700;font-size:20px;text-decoration:none;padding:15px 36px;border-radius:999px;transition:transform .15s ease,filter .15s ease}
+.cta:hover{filter:brightness(1.08);transform:translateY(-2px)}
+.fine{color:var(--muted);font-size:16px;margin:16px 0 0}
+.arch{display:block;width:100%;max-width:400px;height:auto;margin-inline:auto;filter:drop-shadow(0 28px 40px rgba(0,0,0,.35))}
+.arch text{font-family:var(--sans);font-size:17px;fill:#cfe0d5;text-anchor:middle}
+
+/* sections */
+section{padding:80px 0}
+h2{font-family:var(--serif);font-weight:700;font-size:clamp(32px,5vw,48px);line-height:1.3;margin:0 0 12px}
+.sub{color:var(--muted);margin:0 0 36px;max-width:32em}
+.band{background:var(--band);border-block:1px solid var(--line)}
+
+.shots{display:grid;grid-template-columns:repeat(5,1fr);gap:18px}
+.shots figure{margin:0}
+.shots img{display:block;width:100%;height:auto;border-radius:20px;border:1px solid var(--line);box-shadow:0 18px 36px rgba(0,0,0,.22)}
+.shots figcaption{color:var(--muted);font-size:16px;margin-top:12px;text-align:center}
+
+.split{display:grid;grid-template-columns:5fr 7fr;gap:56px;align-items:start}
+.split .head{position:sticky;top:32px}
+dl{margin:0;border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:150px 1fr;gap:6px 28px;padding:24px 0;border-bottom:1px solid var(--line)}
+dt{font-family:var(--serif);font-weight:700;font-size:26px;color:var(--gold);line-height:1.5}
+dd{margin:0}
+
+ol{list-style:none;margin:0;padding:0;counter-reset:step}
+li{counter-increment:step;display:grid;grid-template-columns:48px 1fr;gap:18px;align-items:start;padding:0 0 22px}
+li::before{content:counter(step,arabic-indic);display:grid;place-items:center;width:48px;height:48px;border:1px solid var(--gold);border-radius:50%;color:var(--gold);font-family:var(--serif);font-size:24px;line-height:1}
+li span{padding-top:7px}
+.note{color:var(--muted);font-size:16px;margin:8px 0 0;padding-inline-start:66px}
+
+/* closing */
+.close{background:var(--forest);color:#f1ead9;text-align:center;padding:72px 0;border-radius:200px 200px 0 0;max-width:760px;margin:0 auto}
+.close h2{margin-bottom:24px}
+.close .cta{background:#d2ad63;color:#0a0f0c}
+.close-wrap{padding:40px 24px 0}
+
+footer{padding:28px 0 44px;color:var(--muted);font-size:16px;text-align:center;border-top:1px solid var(--line);margin-top:0}
+
+@media (max-width:860px){
+  .hero{grid-template-columns:1fr;gap:40px;padding:24px 0 64px}
+  .split{grid-template-columns:1fr;gap:28px}
+  .split .head{position:static}
+  .shots{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:16px;padding:4px 24px 18px;margin:0 -24px}
+  .shots figure{flex:0 0 min(250px,68vw);scroll-snap-align:center}
+  section{padding:60px 0}
+  .row{grid-template-columns:1fr}
+  .close{border-radius:140px 140px 0 0;padding:56px 24px}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.cta{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <a class="brand" href="#">شروق</a>
+    <a class="pill" href="#install">التحميل</a>
+  </div>
+
+  <header class="hero">
+    <div>
+      <h1>يومك كله على قوس واحد</h1>
+      <p class="lead">افتح شروق تعرف الصلاة الجاية وفاضل عليها قد إيه، وتشوف إنت فين من يومك، من الفجر للعشاء.</p>
+      <a class="cta" id="download" href="#install">حمّل شروق للأندرويد</a>
+      <p class="fine">مجاني، وملف APK مباشر.</p>
+    </div>
+
+    <svg class="arch" viewBox="0 0 400 460" role="img" aria-label="قوس اليوم من الفجر إلى العشاء، والشمس في منتصفه">
+      <path d="M0 436V200A200 200 0 0 1 400 200V436Q400 460 376 460H24Q0 460 0 436Z" fill="#0f5f45"/>
+      <path d="M12 436V200A188 188 0 0 1 388 200V436Q388 448 376 448H24Q12 448 12 436Z" fill="none" stroke="#d2ad63" stroke-opacity=".55" stroke-width="1.5"/>
+      <g fill="#d2ad63"><circle cx="208" cy="72" r="11"/><path d="M180 72l6 6-6 6-6-6z"/></g>
+      <g transform="translate(0 150)">
+        <line x1="22" y1="230" x2="378" y2="230" stroke="#fff" stroke-opacity=".25" stroke-width="2" stroke-dasharray="2 8" stroke-linecap="round"/>
+        <path id="arc" d="M30 230C100 40 300 40 370 230" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="3" stroke-linecap="round"/>
+        <path id="trail" d="M30 230C100 40 300 40 370 230" fill="none" stroke="#d2ad63" stroke-width="4" stroke-linecap="round"/>
+        <g fill="#0f5f45" stroke="#d2ad63" stroke-width="2.5">
+          <circle cx="39" cy="208" r="5.5"/><circle cx="200" cy="88" r="5.5"/><circle cx="286" cy="115" r="5.5"/><circle cx="345" cy="179" r="5.5"/><circle cx="370" cy="230" r="5.5"/>
+        </g>
+        <text x="39" y="258">الفجر</text><text x="200" y="120">الظهر</text><text x="286" y="147">العصر</text><text x="342" y="209">المغرب</text><text x="368" y="258">العشاء</text>
+        <g id="sun" transform="translate(30 230)"><circle r="20" fill="#d2ad63" opacity=".25"/><circle r="11" fill="#e3c27d"/></g>
+      </g>
+    </svg>
+  </header>
+</div>
+
+<div class="band" id="screens">
+  <section class="wrap">
+    <h2>شكل التطبيق</h2>
+    <p class="sub">شاشات بسيطة، كل واحدة بتعمل حاجة واحدة.</p>
+    <div class="shots" id="shots">
+      <figure><img src="screenshots/01-next.png" alt="الصلاة الجاية والعدّ التنازلي" loading="lazy"><figcaption>الصلاة الجاية</figcaption></figure>
+      <figure><img src="screenshots/02-arc.png" alt="مواقيت اليوم على قوس" loading="lazy"><figcaption>يومك على قوس</figcaption></figure>
+      <figure><img src="screenshots/03-prayed.png" alt="تعليم الصلاة بزر صليت" loading="lazy"><figcaption>صلّيت؟ دوس</figcaption></figure>
+      <figure><img src="screenshots/05-record.png" alt="شاشة سجلّك" loading="lazy"><figcaption>سجلّك</figcaption></figure>
+      <figure><img src="screenshots/04-isha.png" alt="شاشة العشاء في الوضع الليلي" loading="lazy"><figcaption>بالليل</figcaption></figure>
+    </div>
+  </section>
+</div>
+
+<main>
+  <section class="wrap split">
+    <div class="head">
+      <h2>إيه اللي هتلاقيه فيه</h2>
+      <p class="sub">كل حاجة في التطبيق موجودة عشان تشوف يومك وتصلّي في ميعادك.</p>
+    </div>
+    <dl>
+      <div class="row"><dt>الصلاة الجاية</dt><dd>أول ما تفتح التطبيق تشوفها وفاضل عليها قد إيه، وتحتها آية تبدأ بيها.</dd></div>
+      <div class="row"><dt>قوس اليوم</dt><dd>الصلوات الخمس على قوس واحد، والشمس ماشية عليه مع الوقت.</dd></div>
+      <div class="row"><dt>«صليت»</dt><dd>دوس «صليت» والصلاة تتقفل.</dd></div>
+      <div class="row"><dt>سجلّك</dt><dd>كام صلاة النهارده وفي الأسبوع، وكل صلاة ماشي عليها كام يوم ورا بعض.</dd></div>
+      <div class="row"><dt>بالليل</dt><dd>بعد المغرب الشاشة كلها بتضلّم مع يومك.</dd></div>
+    </dl>
+  </section>
+
+  <section class="wrap split" id="install" style="padding-top:0">
+    <div class="head">
+      <h2>إزاي تنزّله</h2>
+      <p class="sub">التطبيق لسه مش على جوجل بلاي، فبتنزّله مباشرة.</p>
+    </div>
+    <div>
+      <ol>
+        <li><span>دوس «حمّل شروق للأندرويد» وانزّل الملف.</span></li>
+        <li><span>لما أندرويد يسألك، اسمح بالتثبيت من المتصفح اللي نزّلت منه.</span></li>
+        <li><span>افتح الملف واضغط تثبيت، وبعدها افتح شروق.</span></li>
+      </ol>
+      <p class="note">لو ظهر تحذير من Play Protect، ده عشان التطبيق مش على المتجر.</p>
+    </div>
+  </section>
+
+  <div class="close-wrap">
+    <div class="close">
+      <h2>ابدأ يومك مع شروق</h2>
+      <a class="cta" id="download2" href="#install">حمّل شروق للأندرويد</a>
+    </div>
+  </div>
+</main>
+
+<footer>عمل التطبيق: Ali Elzeary</footer>
+
+<script>
+// 1) Put your APK link here (GitHub Releases / Drive direct link).
+var APK_URL = "https://github.com/alyKhalid3/Salati/releases/download/v1.0.0/shruooq.apk";
+if (APK_URL) {
+  document.getElementById("download").href = APK_URL;
+  document.getElementById("download2").href = APK_URL;
+  document.querySelector(".pill").href = APK_URL;
+}
+
+// 2) Hide any screenshot that is missing; hide the section if none load.
+(function(){
+  var imgs = document.querySelectorAll("#shots img");
+  var left = imgs.length;
+  imgs.forEach(function(img){
+    img.addEventListener("error", function(){
+      img.parentNode.remove(); left--;
+      if (left === 0) document.getElementById("screens").remove();
+    });
+  });
+})();
+
+// 3) The sun climbs the arc once, then stays at noon.
+(function(){
+  var path = document.getElementById("arc"), trail = document.getElementById("trail"), sun = document.getElementById("sun");
+  var len = path.getTotalLength();
+  trail.style.strokeDasharray = len;
+  function set(p){
+    var pt = path.getPointAtLength(len * p);
+    sun.setAttribute("transform", "translate(" + pt.x + " " + pt.y + ")");
+    trail.style.strokeDashoffset = len * (1 - p);
+  }
+  var target = 0.5;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { set(target); return; }
+  set(0);
+  var start = null, dur = 2800;
+  function tick(t){
+    if (start === null) start = t;
+    var k = Math.min((t - start) / dur, 1), e = 1 - Math.pow(1 - k, 3);
+    set(target * e);
+    if (k < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

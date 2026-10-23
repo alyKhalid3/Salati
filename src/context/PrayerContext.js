@@ -165,6 +165,18 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
     setShowCongratulations(false);
   };
 
+  // Storage wipe does not remount this provider, so the screens would keep
+  // showing the old prayers and streaks until the next launch.
+  const clearPrayerMemory = () => {
+    setPrayedStatus({});
+    setStreaks({});
+    setDailyStreak(0);
+    setBestDailyStreak(0);
+    setDailyLastDate(null);
+    setShowCongratulations(false);
+    setMadhabState('Shafi');
+  };
+
   const isPrayerTimePassed = (prayerName) => {
     if (prayerName === 'sunrise') return false;
     if (!prayerTimes || !prayerTimes[prayerName]) return false;
@@ -380,7 +392,8 @@ export const PrayerProvider = ({ children, location: initialLocation }) => {
       isPrayerTimePassed,
       loadTodayData,
       hideCongratulations,
-  }), [prayerTimes, tomorrowTimes, nextPrayer, currentPrayer, prayedStatus, streaks, dailyStreak, bestDailyStreak, dailyLastDate, location, setLocation, madhab, setMadhab, isDaytime, effectiveTheme, C, phase, atmo, now, clockPinned, locationDateKey, showCongratulations, markAsPrayed, unmarkAsPrayed, togglePrayed, isPrayed, getPrayerStreak, isPrayerTimePassed, loadTodayData, hideCongratulations, reminderMinutes, recurringReminders, tickNow]);
+      clearPrayerMemory,
+  }), [prayerTimes, tomorrowTimes, nextPrayer, currentPrayer, prayedStatus, streaks, dailyStreak, bestDailyStreak, dailyLastDate, location, setLocation, madhab, setMadhab, isDaytime, effectiveTheme, C, phase, atmo, now, clockPinned, locationDateKey, showCongratulations, markAsPrayed, unmarkAsPrayed, togglePrayed, isPrayed, getPrayerStreak, isPrayerTimePassed, loadTodayData, hideCongratulations, clearPrayerMemory, reminderMinutes, recurringReminders, tickNow]);
 
   return (
     <PrayerContext.Provider value={value}>

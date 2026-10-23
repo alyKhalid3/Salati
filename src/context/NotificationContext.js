@@ -33,6 +33,13 @@ export const NotificationProvider = ({ children }) => {
   const setNotificationsEnabled = (v) => { setNotificationsEnabledState(v); persist({ notificationsEnabled: v }); };
   const setReminderMinutes = (m) => { setReminderMinutesState(m); persist({ reminderMinutes: m }); };
   const setRecurringReminders = (v) => { setRecurringRemindersState(v); persist({ recurringReminders: v }); };
+  // Memory only. A wipe already emptied storage; persisting here would
+  // write the default settings object (location: null) back immediately.
+  const resetToDefaults = () => {
+    setNotificationsEnabledState(true);
+    setReminderMinutesState(10);
+    setRecurringRemindersState(true);
+  };
 
   return (
     <NotificationContext.Provider value={{
@@ -42,6 +49,7 @@ export const NotificationProvider = ({ children }) => {
       setReminderMinutes,
       recurringReminders,
       setRecurringReminders,
+      resetToDefaults,
       ready,
     }}>
       {children}

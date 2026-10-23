@@ -23,7 +23,6 @@ import { getRandomMessage } from '../utils/messages';
 import { schedulePrayerNotifications, cancelAllNotifications } from '../utils/notifications';
 import { storageBackend } from '../utils/storage';
 import WisdomCard from '../components/WisdomCard';
-import CongratulationsModal from '../components/CongratulationsModal';
 import LocationPicker from '../components/LocationPicker';
 import CountdownText from '../components/CountdownText';
 import MoonCrescent from '../components/MoonCrescent';
@@ -101,8 +100,8 @@ function PhaseGlyph({ phaseKey, color }) {
 export default function HomeScreen() {
   const {
     prayerTimes, tomorrowTimes, nextPrayer, isDaytime, C,
-    phase, showCongratulations, hideCongratulations, locationDateKey,
-    location: contextLocation, dailyStreak, setLocation, prayedStatus,
+    phase, locationDateKey,
+    location: contextLocation, setLocation, prayedStatus,
   } = usePrayer();
   const styles = React.useMemo(() => getStyles(C, isDaytime), [C, isDaytime]);
   const { notificationsEnabled, setNotificationsEnabled, reminderMinutes, setReminderMinutes, recurringReminders, ready: notificationsReady } = useNotification();
@@ -155,6 +154,15 @@ export default function HomeScreen() {
   useEffect(() => {
     (async () => {
       const s = await storageBackend.getSettings();
+      if (Platform.OS !== 'web') {
+        try {
+          const { status } = await Notifications.getPermissionsAsync();
+          setBannerVisible(status !== 'granted' || s.notificationsEnabled === false);
+        } catch {
+          setBannerVisible(s.notificationsEnabled === false);
+        }
+        return;
+      }
       if (typeof window !== 'undefined' && 'Notification' in window) {
         if (Notification.permission === 'default' && s.notificationsEnabled) setBannerVisible(true);
         else if (!s.notificationsEnabled) setBannerVisible(true);
@@ -192,11 +200,19 @@ export default function HomeScreen() {
     // silently skipped every schedule pass (nothing was ever armed).
     const id = setTimeout(() => { scheduleAll(); }, 0);
     return () => clearTimeout(id);
-  }, [prayerTimes, tomorrowTimes, reminderMinutes, notificationsEnabled, recurringReminders, notificationsReady]);
+  }, [prayerTimes, tomorrowTimes, reminderMinutes, notificationsEnabled, recurringReminders, notificationsReady, prayedStatus]);
 
   const scheduleAll = async () => {
     if (!prayerTimes) return;
     if (!notificationsEnabled) { await cancelAllNotifications(); return; }
+    if (Platform.OS !== 'web') {
+      try {
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status !== 'granted') return;
+      } catch {
+        return;
+      }
+    }
     const days = [prayerTimes, tomorrowTimes];
     for (const times of days) {
       if (!times) continue;
@@ -220,8 +236,8 @@ export default function HomeScreen() {
       try {
         const { status } = await Notifications.requestPermissionsAsync();
         if (status !== 'granted') {
-          setNotificationsEnabled(true);
-          setBannerVisible(false);
+          setNotificationsEnabled(false);
+          setBannerVisible(true);
           return;
         }
       } catch {}
@@ -229,8 +245,8 @@ export default function HomeScreen() {
       try {
         const perm = await Notification.requestPermission();
         if (perm !== 'granted') {
-          setNotificationsEnabled(true);
-          setBannerVisible(false);
+          setNotificationsEnabled(false);
+          setBannerVisible(true);
           return;
         }
       } catch {}
@@ -358,7 +374,6 @@ export default function HomeScreen() {
       ) : null}
 
       <LocationPicker visible={locationPickerVisible} onClose={handleClosePicker} onSelect={handleSelectLocation} currentLocation={currentLocation} />
-      <CongratulationsModal visible={showCongratulations} dailyStreak={dailyStreak} onClose={hideCongratulations} />
     </SafeAreaView>
   );
 }
