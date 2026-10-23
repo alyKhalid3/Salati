@@ -2,6 +2,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { PRAYER_NAMES } from './prayerTimes';
+import { S } from './strings';
 
 const webTimers = {};
 
@@ -142,10 +143,10 @@ export const schedulePrayerNotifications = (prayerId, prayerTime, reminderMinute
     }
     const reminderTime = new Date(prayerTime.getTime() - reminderMinutes * 60 * 1000);
     if (reminderTime > now) {
-      webTimers[`${dayKey}_${prayerId}_before`] = setTimeout(() => showWebNotification('صلاتي - Salati', `صلاة ${prayerName} بعد ${reminderMinutes} دقائق`, `prayer-${prayerId}-${dayKey}-reminder`), reminderTime - now);
+      webTimers[`${dayKey}_${prayerId}_before`] = setTimeout(() => showWebNotification(S.appName, `صلاة ${prayerName} بعد ${reminderMinutes} دقائق`, `prayer-${prayerId}-${dayKey}-reminder`), reminderTime - now);
     }
     if (prayerTime > now) {
-      webTimers[`${dayKey}_${prayerId}_ontime`] = setTimeout(() => showWebNotification('صلاتي - Salati', `حان وقت صلاة ${prayerName}`, `prayer-${prayerId}-${dayKey}`), prayerTime - now);
+      webTimers[`${dayKey}_${prayerId}_ontime`] = setTimeout(() => showWebNotification(S.appName, `حان وقت صلاة ${prayerName}`, `prayer-${prayerId}-${dayKey}`), prayerTime - now);
     }
     if (recurring) {
       // Steady 10-minute cadence after prayer time, up to 1 hour (6 reminders).
@@ -153,7 +154,7 @@ export const schedulePrayerNotifications = (prayerId, prayerTime, reminderMinute
       for (const interval of [10, 20, 30, 40, 50, 60]) {
         const t = new Date(prayerTime.getTime() + interval * 60000);
         if (t > now) {
-          webTimers[`${dayKey}_${prayerId}_${interval}`] = setTimeout(() => showWebNotification('صلاتي - Salati', `ما زالت صلاة ${prayerName} بانتظارك`, `prayer-${prayerId}-${dayKey}-${interval}`), t - now);
+          webTimers[`${dayKey}_${prayerId}_${interval}`] = setTimeout(() => showWebNotification(S.appName, `ما زالت صلاة ${prayerName} بانتظارك`, `prayer-${prayerId}-${dayKey}-${interval}`), t - now);
         }
       }
     }
@@ -232,7 +233,7 @@ export const getScheduledNotifications = async () => {
 // Test helper for mobile web: call from console - window.testMobileNotification()
 if (typeof window !== 'undefined') {
   window.testMobileNotification = () => {
-    showWebNotification('صلاتي - Salati', '🕌 اختبار الإشعارات - تعمل بنجاح!', 'test');
-    setTimeout(() => showWebNotification('صلاتي - Salati', '⏰ تنبيه: حان وقت صلاة الفجر بعد 10 دقائق', 'test2'), 2000);
+    showWebNotification(S.appName, '🕌 اختبار الإشعارات - تعمل بنجاح!', 'test');
+    setTimeout(() => showWebNotification(S.appName, '⏰ تنبيه: حان وقت صلاة الفجر بعد 10 دقائق', 'test2'), 2000);
   };
 }

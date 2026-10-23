@@ -3,7 +3,7 @@
 // Add an `en` object later and wire a locale switch; screens never inline copy.
 
 export const S = {
-  appName: 'صلاتي',
+  appName: 'شروق',
   nextPrayer: 'الصلاة القادمة',
   todayPrayers: 'مواقيت اليوم',
   changeLocation: (city) => `تغيير الموقع: ${city}`,
@@ -39,7 +39,7 @@ export const S = {
   bannerAction: 'تفعيل',
 
   // Footer
-  footerLine: 'صلاتي — ليكن قلبك مع الله',
+  footerLine: 'شروق — ليكن قلبك مع الله',
 
   // Loading
   loadingTimes: 'جاري تحميل مواقيت الصلاة...',
@@ -62,6 +62,29 @@ export const S = {
   tabSettings: 'الإعدادات',
   progressPrayers: 'سلاسل الصلوات',
   fridayKhatam: 'جمعة مباركة',
+
+  statsMore: 'مزيد من التحليل',
+  statsMoreHint: 'الشهر، الصلوات، والأيام',
+  statsTitle: 'التحليل',
+  statsMonth: 'هذا الشهر',
+  statsRange7: 'أسبوع',
+  statsRange30: 'شهر',
+  statsRange90: '٣ أشهر',
+  statsPerformed: 'أُدِّيت',
+  statsMonthHint: 'آخر ٣٠ يوماً',
+  statsPrayers: 'كل صلاة',
+  statsCalendar: 'التقويم',
+  statsCalendarHint: 'اليوم الذهبي اكتملت صلواته الخمس',
+  statsDaysKept: 'يوماً مكتملاً',
+  statsMarked: 'صلاة مُسجَّلة',
+  statsOf: 'من',
+  statsRate: 'نسبة الإتمام',
+  statsCurrent: 'الحالية',
+  statsBestCol: 'الأفضل',
+  statsKept: 'اكتمل',
+  statsMissed: 'ناقص',
+  statsLoading: 'جاري تحميل الإحصاء...',
+  statsToday: 'اليوم',
 };
 
 // Arabic-Indic numerals for the identity-bearing digits (porcelain world).

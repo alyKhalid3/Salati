@@ -213,7 +213,7 @@ class StorageBackend {
         // Check if all prayers are still completed
         let allPrayed = true;
         for (const prayer of prayers) {
-            const data = await this.get(this.stores.PRAYED, today);
+            const data = await this.get(this.stores.PRAYED, today) || {};
             if (!data[prayer] || !data[prayer].completed) {
                 allPrayed = false;
                 break;
@@ -306,7 +306,7 @@ class StorageBackend {
         if (allPrayed) {
             const lastCompletion = await this.get(this.stores.DAILY_STREAK, 'current');
             if (!lastCompletion || lastCompletion.lastDate !== today) {
-                await this.updateDailyStreak();
+                await this.updateDailyStreak(today);
                 return true;
             }
         }

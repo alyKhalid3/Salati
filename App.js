@@ -1,6 +1,6 @@
 // App.js - Main Entry Point
 import 'react-native-gesture-handler';
-import React, { useEffect, useState, useRef, lazy, Suspense } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { AppRegistry, Platform, Text, View, Animated, StyleSheet, Easing } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -11,8 +11,10 @@ import * as Location from 'expo-location';
 import HomeScreen from './src/screens/HomeScreen';
 import TimesScreen from './src/screens/TimesScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 // (boot splash removed by design — home is the first screen)
 import TabBar from './src/components/TabBar';
+import CongratulationsModal from './src/components/CongratulationsModal';
 import { NotificationProvider } from './src/context/NotificationContext';
 import { PrayerProvider, usePrayer } from './src/context/PrayerContext';
 import { resolveGpsLocation } from './src/utils/prayerTimes';
@@ -20,44 +22,52 @@ import { registerRootComponent } from 'expo';
 import * as SplashScreen from 'expo-splash-screen';
 import { storageBackend } from './src/utils/storage';
 SplashScreen.preventAutoHideAsync().catch(()=>{});
-const SettingsScreen = lazy(() => import('./src/screens/SettingsScreen'));
 
-// The four-page shell of the «المحراب» world: a custom bottom tab bar
-// flips between pages with a short crossfade — no navigation dependency
-// needed. RTL: home quotes the right edge first.
+// Pages stay mounted. Swapping them in and out restarted each screen's
+// entrance animation while the shell was still fading, so a tab change
+// looked like the page loaded, vanished, and loaded again.
 function TabShell() {
-  const { C } = usePrayer();
+  const { C, showCongratulations, dailyStreak, hideCongratulations } = usePrayer();
   const [page, setPage] = useState('home');
-  const [swap, setSwap] = useState(false); // true while the outgoing page fades
-  const [pending, setPending] = useState(null);
   const opacity = useRef(new Animated.Value(1)).current;
+  const rise = useRef(new Animated.Value(0)).current;
+  const motion = useRef(null);
+  const first = useRef(true);
 
   const changePage = (key) => {
-    if (key === page || swap) return;
-    setPending(key);
-    setSwap(true);
-    Animated.timing(opacity, { toValue: 0, duration: 150, easing: Easing.in(Easing.ease), useNativeDriver: true }).start(() => {
-      setPending(null);
-      setPage(key);
-      setSwap(false);
-      Animated.timing(opacity, { toValue: 1, duration: 180, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
-    });
+    if (key === page) return;
+    if (motion.current) motion.current.stop();
+    opacity.setValue(0);
+    rise.setValue(10);
+    setPage(key);
   };
 
-  const shown = pending || page;
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return undefined;
+    }
+    const next = Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(rise, { toValue: 0, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+    ]);
+    motion.current = next;
+    next.start();
+    return () => next.stop();
+  }, [page, opacity, rise]);
+
+  const pane = (key) => ({ flex: 1, display: page === key ? 'flex' : 'none' });
+
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <Animated.View style={{ flex: 1, opacity }}>
-        {shown === 'home' && <HomeScreen />}
-        {shown === 'times' && <TimesScreen />}
-        {shown === 'progress' && <ProgressScreen />}
-        {shown === 'settings' && (
-          <Suspense fallback={<View style={{ flex: 1, backgroundColor: C.bg }} />}>
-            <SettingsScreen />
-          </Suspense>
-        )}
+      <Animated.View style={{ flex: 1, opacity, transform: [{ translateY: rise }] }}>
+        <View style={pane('home')}><HomeScreen /></View>
+        <View style={pane('times')}><TimesScreen /></View>
+        <View style={pane('progress')}><ProgressScreen /></View>
+        <View style={pane('settings')}><SettingsScreen /></View>
       </Animated.View>
       <TabBar active={page} onChange={changePage} bottomInset={14} />
+      <CongratulationsModal visible={showCongratulations} dailyStreak={dailyStreak} onClose={hideCongratulations} />
     </View>
   );
 }
